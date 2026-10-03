@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { db } from '../db/db'
 import { SYNC_TABLES, type SyncTable } from './syncTables'
 import type { Table } from 'dexie'
+import { ensureSeed } from './ensureSeed'
 
 const TOKEN_KEY = 'gym-token'
 const CURSOR_KEY = 'gym-cursor'
@@ -42,6 +43,9 @@ const store = {
 }
 
 export const hasToken = () => !!store.get(TOKEN_KEY)
+
+/** Con sesión iniciada pero sin ningún pull aún, conviene esperar al servidor antes de sembrar (evita duplicados). */
+export const awaitsFirstSync = () => hasToken() && !store.get(CURSOR_KEY)
 
 export async function login(password: string): Promise<void> {
   const res = await fetch('/api/login', {
@@ -122,6 +126,9 @@ async function doSync() {
     } else {
       set({ status: 'error', error: e instanceof Error ? e.message : 'Error de sincronización' })
     }
+  } finally {
+    // Tras cada sync (o fallo) se reconcilia la semilla: idempotente y sin duplicar lo recién descargado.
+    await ensureSeed().catch(() => {})
   }
 }
 
