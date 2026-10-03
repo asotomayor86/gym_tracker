@@ -204,7 +204,7 @@ const BASE: ExerciseGuide[] = [
     diagram: d('sentado', 10, 'maquina', 'apertura', [0.6, 0.35], [0.6, 0.35], 'Abre las piernas hacia los lados'),
   }),
 
-  g('Aductores en máquina', 'aislamiento', 1, ['cuadriceps'], [], {
+  g('Aductores en máquina', 'aislamiento', 1, ['aductores'], [], {
     setup: [
       'Siéntate con la espalda apoyada y los cojines por dentro de las rodillas.',
       'Ajusta la apertura inicial para no forzar la cadera.',

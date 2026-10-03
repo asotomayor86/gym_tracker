@@ -67,7 +67,7 @@ export const MUSCLE_IDS = [
 ] as const
 export type MuscleId = (typeof MUSCLE_IDS)[number]
 
-/** Grupo de MuscleGroup al que pertenece cada id (tib no tiene grupo propio; 'add' cuenta como cuádriceps hasta que exista 'aductores'). */
+/** Grupo de MuscleGroup al que pertenece cada id (tib no tiene grupo propio). */
 export const MUSCLE_ID_GROUP: Record<MuscleId, MuscleGroup | null> = {
   pec: 'pecho', pecC: 'pecho',
   trap: 'espalda', trapM: 'espalda', rhomb: 'espalda', teres: 'espalda', infra: 'espalda', lat: 'espalda', erector: 'espalda',
@@ -76,7 +76,7 @@ export const MUSCLE_ID_GROUP: Record<MuscleId, MuscleGroup | null> = {
   dant: 'hombro', dlat: 'hombro', dpost: 'hombro',
   biceps: 'biceps', brachialis: 'biceps', triceps: 'triceps',
   brachrad: 'antebrazo', fext: 'antebrazo', fflex: 'antebrazo',
-  rfem: 'cuadriceps', vlat: 'cuadriceps', vmed: 'cuadriceps', add: 'cuadriceps',
+  rfem: 'cuadriceps', vlat: 'cuadriceps', vmed: 'cuadriceps', add: 'aductores',
   ham: 'isquios', hamS: 'isquios',
   gastroc: 'gemelo', gastrocM: 'gemelo', soleus: 'gemelo',
   tib: null,

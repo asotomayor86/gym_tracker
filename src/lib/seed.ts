@@ -16,7 +16,7 @@ export const SEED: Seed[] = [
   ['Curl femoral tumbado', 'isquios', [], 'Máquina'],
   ['Curl femoral sentado', 'isquios', [], 'Máquina'],
   ['Abductores en máquina', 'gluteo', [], 'Máquina'],
-  ['Aductores en máquina', 'cuadriceps', [], 'Máquina'],
+  ['Aductores en máquina', 'aductores', [], 'Máquina'],
   ['Patada de glúteo en máquina', 'gluteo', ['isquios'], 'Máquina'],
   ['Hip thrust en máquina', 'gluteo', ['isquios'], 'Máquina'],
   ['Elevación de gemelos sentado', 'gemelo', [], 'Máquina'],

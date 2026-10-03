@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { findGuide } from './exerciseGuides'
+import { MUSCLE_ID_GROUP } from './guideTypes'
 import { buildSeedRows, slugify } from './seed'
 
 describe('buildSeedRows', () => {
@@ -70,5 +71,15 @@ describe('slugify', () => {
   it('quita tildes y signos', () => {
     expect(slugify('Día A · Piernas + Hombros')).toBe('dia-a-piernas-hombros')
     expect(slugify('Peck deck (aperturas en máquina)')).toBe('peck-deck-aperturas-en-maquina')
+  })
+})
+
+describe('aductores', () => {
+  it('Aductores en máquina es del grupo aductores y conserva su ID', () => {
+    const e = buildSeedRows().exercises.find((x) => x.name === 'Aductores en máquina')
+    expect(e?.id).toBe('seed-ex-aductores-en-maquina')
+    expect(e?.primaryMuscle).toBe('aductores')
+    expect(findGuide('Aductores en máquina')?.primary).toEqual(['aductores'])
+    expect(MUSCLE_ID_GROUP.add).toBe('aductores')
   })
 })
