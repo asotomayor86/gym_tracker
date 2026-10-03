@@ -225,7 +225,7 @@ export default function ExerciseDiagram({
   }
   // Brazo que no trabaja: cuelga (o agarra el asa en prono / la barra en sentadilla), sin atravesar suelo ni banco.
   const sa = SPECIAL.staticArm
-  const staticArm: P = d.pose === 'prono' ? [...sa.prono] as P : squat ? [...sa.squat] as P : [sa.default[0], Math.min(sa.default[1], FLOOR - 4 - s.shoulder[1])]
+  const staticArm: P = d.pose === 'prono' ? [...sa.prono] as P : squat ? [...sa.squat] as P : d.pose === 'sentado-reclinado' ? [...sa.reclined] as P : [sa.default[0], Math.min(sa.default[1], FLOOR - 4 - s.shoulder[1])]
   const arm = leg
     ? ik(s.shoulder, add(s.shoulder, staticArm), UARM, FARM, lower)
     : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, REACH.arm)

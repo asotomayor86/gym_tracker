@@ -17,7 +17,7 @@ export const SEG = {
   torso: 43, // hombro–cadera (≈0,27 H)
   uarm: 26, // hombro–codo
   farm: 22, // codo–muñeca
-  hand: 15, // muñeca–dedos
+  hand: 16, // muñeca–dedos
   thigh: 39, // cadera–rodilla
   shin: 39, // rodilla–tobillo
   footLength: 22, // talón–puntera
@@ -76,7 +76,7 @@ export function basePose(pose: RigPose, backAngle: number): { hip: [number, numb
 /** Reglas especiales del rig. */
 export const SPECIAL = {
   /** Brazo que no trabaja (ejercicios de pierna): objetivo relativo al hombro. */
-  staticArm: { default: [14, 40], prono: [10, 14], squat: [4, -4] },
+  staticArm: { default: [14, 40], prono: [10, 14], squat: [4, -4], reclined: [26, 24] },
   /** Colgado: recorrido vertical del cuerpo y separación del hombro respecto a las manos. */
   colgado: { rise: 28, pullStart: 44, dipStart: -16 },
   /** Gemelos: plantarflexión máxima y radio del pedal. */
