@@ -78,7 +78,7 @@ export const SPECIAL = {
   /** Brazo que no trabaja (ejercicios de pierna): objetivo relativo al hombro. */
   staticArm: { default: [14, 40], prono: [10, 14], squat: [4, -4] },
   /** Colgado: recorrido vertical del cuerpo y separación del hombro respecto a las manos. */
-  colgado: { rise: 34, pullStart: 58, dipStart: -20 },
+  colgado: { rise: 32, pullStart: 50, dipStart: -20 },
   /** Gemelos: plantarflexión máxima y radio del pedal. */
   calf: { maxPlantarflexionDeg: 40, toeLength: SEG.ankleToToe },
   /** Sentadilla: la cadera baja lo que sube el pie en el recorrido relativo from→to. */

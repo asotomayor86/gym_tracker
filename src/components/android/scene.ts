@@ -34,7 +34,6 @@ export function idsFromGroups(groups: readonly MuscleGroup[]): string[] {
     const g = MUSCLE_ID_GROUP[id as MuscleId]
     if (g && groups.includes(g)) out.push(id)
   }
-  if (groups.includes('aductores' as MuscleGroup)) out.push('add')
   return out
 }
 
