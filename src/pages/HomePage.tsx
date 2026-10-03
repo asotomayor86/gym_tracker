@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SyncBanner } from '../components/SyncUI'
 import { Button, EmptyState, HeatBar, Page, SectionTitle } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS, fmtDate } from '../lib/labels'
@@ -26,6 +27,7 @@ export default function HomePage() {
 
   return (
     <Page title="Hoy" eyebrow={fmtDate(today)}>
+      <SyncBanner />
       {active && (
         <Link
           to={`/session/${active.id}`}

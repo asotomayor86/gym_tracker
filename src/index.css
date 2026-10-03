@@ -163,6 +163,13 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 select option { color: #0b0f14; background: #fff; }
 
+/* Hoja de acceso */
+@keyframes sheet-in { from { transform: translateY(100%); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@keyframes sheet-fade { from { opacity: 0; } }
+.sheet-in { animation: sheet-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sheet-fade { animation: sheet-fade 0.25s both; }
+@media (min-width: 48rem) { @keyframes sheet-in { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } } }
+
 /* Entrada escalonada de bloques */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .rise > * { animation: rise 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
@@ -172,6 +179,6 @@ select option { color: #0b0f14; background: #fff; }
 .rise > *:nth-child(5) { animation-delay: 0.2s; }
 
 @media (prefers-reduced-motion: reduce), (prefers-reduced-data: reduce) {
-  .live-bg i, .heat, .heat-fill, .pulse-ring, .rise > * { animation: none !important; }
+  .live-bg i, .heat, .heat-fill, .pulse-ring, .rise > *, .sheet-in, .sheet-fade { animation: none !important; }
   .fold, .fold > div, .press { transition: none !important; }
 }

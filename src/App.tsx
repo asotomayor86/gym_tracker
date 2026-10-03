@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { hasToken, useSyncState } from './lib/sync'
+import { LoginSheetHost, NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
 import HomePage from './pages/HomePage'
 import SessionPage from './pages/SessionPage'
@@ -16,13 +16,6 @@ const NAV = [
   { to: '/settings', label: 'Ajustes', d: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6' },
 ]
 
-function SyncDot() {
-  const { status } = useSyncState()
-  if (!hasToken()) return null
-  const color = { syncing: 'bg-signal animate-pulse', ok: 'bg-signal', error: 'bg-e-fail', unauth: 'bg-e-fail', idle: 'bg-mute' }[status]
-  return <span title={`Sync: ${status}`} className={`inline-block size-2 rounded-full ${color}`} />
-}
-
 export default function App() {
   const link = ({ isActive }: { isActive: boolean }) =>
     `press flex flex-1 md:flex-none flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3
@@ -33,19 +26,25 @@ export default function App() {
   return (
     <div className="min-h-dvh md:flex">
       <div className="live-bg" aria-hidden><i /><i /><i /><i /></div>
+      <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-30 md:hidden"><SyncBadge /></div>
+      <LoginSheetHost />
       <nav
         className="glass-flat fixed bottom-3 inset-x-3 z-20 flex gap-1 p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]
                    md:sticky md:top-4 md:bottom-auto md:inset-x-auto md:m-4 md:h-[calc(100dvh-2rem)] md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:p-3"
       >
         <div className="hidden md:block px-3 pt-3 pb-7">
           <div className="display heat text-3xl leading-tight pb-1">Gym<br />Tracker</div>
-          <div className="eyebrow mt-3 flex items-center gap-2">Registro de series <SyncDot /></div>
+          <div className="eyebrow mt-3">Registro de series</div>
+          <SyncBadge className="mt-3" />
         </div>
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className={link}>
-            <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <span className="relative shrink-0">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d={n.d} />
             </svg>
+              {n.to === '/settings' && <NavDot />}
+            </span>
             {n.label}
           </NavLink>
         ))}
