@@ -1,9 +1,16 @@
-/** Geometría 2D del androide: puntos, cinemática de 2 huesos y segmentos con perfil de grosor asimétrico. */
+/** Geometría 2D del androide: puntos, cinemática de 2 huesos y pose del rig en un progreso p. */
+import type { MovementDiagram } from '../../lib/guideTypes'
+import { basePose, CANVAS, REACH, SEG, SPECIAL, toPx } from '../../lib/rigSpec'
+
 export type P = [number, number]
 export type Prof = [t: number, w: number][]
 export type AsymProf = { f: Prof; b: Prof }
 
 export const add = (a: P, b: P): P => [a[0] + b[0], a[1] + b[1]]
+export const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1]]
+export const mul = (a: P, k: number): P => [a[0] * k, a[1] * k]
+export const nrm = (a: P): P => [-a[1], a[0]]
+export const dot = (a: P, b: P) => a[0] * b[0] + a[1] * b[1]
 export const mix = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 export const dist = (a: P, b: P) => Math.hypot(b[0] - a[0], b[1] - a[1])
 export const f1 = (n: number) => n.toFixed(1)
@@ -113,4 +120,193 @@ export function roundPoly(pts: P[], r: number): string {
     d += `${i ? 'L' : 'M'}${f1(p[0] + v1[0] * l1)},${f1(p[1] + v1[1] * l1)}Q${f1(p[0])},${f1(p[1])} ${f1(p[0] + v2[0] * l2)},${f1(p[1] + v2[1] * l2)}`
   }
   return d + 'Z'
+}
+
+/* ======================================================================================
+ * Pose del rig en un progreso p (0..1). Función PURA: la usan el dibujo y los tests de anatomía.
+ * ====================================================================================== */
+export interface Skel { shoulder: P; hip: P; knee: P; ankle: P; up: P }
+export type JointName = 'knee' | 'elbow' | 'hip' | 'shoulder' | 'ankle'
+/** Lectura de una articulación: `deg` con signo, + = sentido natural de flexión (rodilla hacia atrás, codo hacia delante, cadera y hombro hacia delante, tobillo en flexión plantar). */
+export interface JointReading { deg: number; sense: 'flexion' | 'extension' | 'neutral' }
+export type Frontal =
+  | { kind: 'legs'; kx: number; opening: boolean }
+  | { kind: 'arms'; theta: number; th2: number; lift: boolean; closing: boolean; pull: boolean }
+  | null
+export interface RigPose {
+  s: Skel
+  arm: { mid: P; end: P }
+  leg: { mid: P; end: P }
+  footVec: P | null
+  pedal: [P, P] | null
+  A: P; B: P; V: P | null; cur: P
+  limbLeg: boolean
+  squat: boolean
+  calf: boolean
+  seated: boolean
+  horizontal: boolean
+  vertical: boolean
+  frontal: Frontal
+  /** Brazos en plano frontal (apertura, elevación, face pull). */
+  armsFront: boolean
+  /** Alias para los tests de anatomía: plano de dibujo y puntos clave. */
+  plane: 'lateral' | 'frontal'
+  shoulder: P; elbow: P; wrist: P; hip: P; knee: P; ankle: P; torsoUp: P
+  /** y del vértice de la cabeza (px). */
+  headTop: number
+  /** Agarre fijo de las manos (colgado) o null. */
+  target: P | null
+  plantarDeg: number
+  frontalElbowDeg?: number
+  /** Ángulos articulares del lado visible (vista lateral). En vistas frontales solo el codo tiene valor (sin signo). */
+  joints: Record<JointName, JointReading>
+}
+
+/** Rangos fisiológicos permitidos (grados, + = flexión natural). Fuera de ellos, el sentido es imposible. */
+export const JOINT_RANGE: Record<JointName, [number, number]> = {
+  knee: [-3, 150], elbow: [-3, 150], hip: [-30, 125], shoulder: [-60, 185], ankle: [-25, 55],
+}
+
+function skeletonOf(pose: MovementDiagram['pose'], backAngle: number): Skel {
+  const r = (backAngle * Math.PI) / 180
+  const up: P = [-Math.sin(r), -Math.cos(r)]
+  const { hip, shoulder, ankle } = basePose(pose, backAngle)
+  const knee: P = pose === 'prono' ? [hip[0] - SEG.thigh, hip[1]] : ik(hip, ankle, SEG.thigh, SEG.shin, anterior(hip, ankle)).mid
+  return { hip, shoulder, knee, ankle, up }
+}
+
+const signedAngle = (t: P, u: P) => (Math.atan2(t[0] * u[1] - t[1] * u[0], t[0] * u[0] + t[1] * u[1]) * 180) / Math.PI
+const senseOf = (deg: number): JointReading['sense'] => (deg > 1.5 ? 'flexion' : deg < -1.5 ? 'extension' : 'neutral')
+const reading = (deg: number): JointReading => ({ deg, sense: senseOf(deg) })
+
+export function poseAt(d: MovementDiagram, p: number): RigPose {
+  const { rise, pullStart, dipStart } = SPECIAL.colgado
+  const base = skeletonOf(d.pose, d.backAngle)
+  let s = base
+  let A = toPx(d.from), B = toPx(d.to), V: P | null = d.via ? toPx(d.via) : null
+  let cur: P = V ? (p < 0.5 ? mix(A, V, p * 2) : mix(V, B, (p - 0.5) * 2)) : mix(A, B, p)
+  const leg = d.limb === 'pierna'
+  let armTarget: P | null = null
+  let armPick = d.elbow === 'arriba' ? higher : lower
+  if (d.pose === 'colgado') {
+    const pull = d.motion === 'tiron'
+    const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
+    const bodyAt = (q: number): P => [pull ? H[0] - 12 : H[0], pull ? H[1] + pullStart - rise * q : H[1] + dipStart - rise * q]
+    const chest = (q: number): P => add(bodyAt(q), [13, 14])
+    const sh = bodyAt(p)
+    const hip: P = [sh[0], sh[1] + SEG.torso]
+    const ankle: P = [hip[0] - 10, Math.min(hip[1] + 34, CANVAS.floor - 4)]
+    s = { shoulder: sh, hip, ankle, knee: ik(hip, ankle, SEG.thigh, SEG.shin, anterior(hip, ankle)).mid, up: [0, -1] }
+    A = chest(0); B = chest(1); V = null; cur = chest(p)
+    armTarget = H
+    if (!pull) armPick = (a, b) => (a[0] < b[0] ? a : b)
+  }
+  if (d.pose === 'tumbado' && d.motion === 'bisagra' && !leg) {
+    const S0 = base.shoulder
+    const l = Math.hypot(cur[0] - S0[0], cur[1] - S0[1]) || 1
+    const hip: P = [S0[0] + ((cur[0] - S0[0]) / l) * SEG.torso, S0[1] + ((cur[1] - S0[1]) / l) * SEG.torso]
+    const k = ik(hip, base.ankle, SEG.thigh, SEG.shin, anterior(hip, base.ankle))
+    s = { shoulder: S0, hip, ankle: k.end, knee: k.mid, up: [(S0[0] - hip[0]) / SEG.torso, (S0[1] - hip[1]) / SEG.torso] }
+  }
+  const squat = leg && d.motion === 'sentadilla'
+  if (squat) {
+    const A0 = A, hipOf = (c: P): P => [base.hip[0] + (A0[0] - c[0]), base.hip[1] + (A0[1] - c[1])]
+    const hip = hipOf(cur)
+    const pathAt = (q: number): P => (V ? (q < 0.5 ? mix(A0, V, q * 2) : mix(V, B, (q - 0.5) * 2)) : mix(A0, B, q))
+    A = hipOf(pathAt(0)); B = hipOf(pathAt(1)); cur = hip; V = null
+    const shift: P = [hip[0] - base.hip[0], hip[1] - base.hip[1]]
+    const k = ik(hip, base.ankle, SEG.thigh, SEG.shin, anterior(hip, base.ankle), REACH.leg)
+    s = { shoulder: add(base.shoulder, shift), hip, ankle: k.end, knee: k.mid, up: base.up }
+  }
+  const calf = leg && d.motion === 'elevacion'
+  const rot = (v: P, a: number): P => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]
+  let footVec: P | null = null
+  let calfLeg: { mid: P; end: P } | null = null
+  let pedal: [P, P] | null = null
+  if (calf) {
+    const reclined = d.pose === 'sentado-reclinado'
+    let rest: { mid: P; end: P }
+    if (reclined) {
+      const dl = Math.hypot(A[0] - s.hip[0], A[1] - s.hip[1]) || 1
+      const L2 = SEG.thigh + SEG.shin
+      const tgt: P = [s.hip[0] + ((A[0] - s.hip[0]) / dl) * L2, s.hip[1] + ((A[1] - s.hip[1]) / dl) * L2]
+      rest = ik(s.hip, tgt, SEG.thigh, SEG.shin, anterior(s.hip, tgt), REACH.legRigid)
+    } else {
+      const tgt: P = [A[0], CANVAS.floor - 9]
+      rest = ik(s.hip, tgt, SEG.thigh, SEG.shin, anterior(s.hip, tgt), REACH.leg)
+    }
+    const l0 = Math.hypot(rest.end[0] - rest.mid[0], rest.end[1] - rest.mid[1]) || 1
+    const f0: P = [(rest.end[1] - rest.mid[1]) / l0, -(rest.end[0] - rest.mid[0]) / l0]
+    const fvAt = (q: number) => rot(f0, (SPECIAL.calf.maxPlantarflexionDeg * Math.PI * q) / 180)
+    const toe = SPECIAL.calf.toeLength
+    const toeAt = (q: number): P => add(rest.end, [fvAt(q)[0] * toe, fvAt(q)[1] * toe])
+    footVec = fvAt(p)
+    calfLeg = rest
+    const sole: P = [-footVec[1], footVec[0]]
+    pedal = [
+      add(rest.end, [sole[0] * 8 - footVec[0] * 7, sole[1] * 8 - footVec[1] * 7]),
+      add(rest.end, [sole[0] * 8 + footVec[0] * 21, sole[1] * 8 + footVec[1] * 21]),
+    ]
+    A = toeAt(0); B = toeAt(1); V = null; cur = toeAt(p)
+  }
+  const sa = SPECIAL.staticArm
+  const staticArm: P = d.pose === 'prono' ? [sa.prono[0], sa.prono[1]] : squat ? [sa.squat[0], sa.squat[1]]
+    : d.pose === 'sentado-reclinado' ? [sa.reclined[0], sa.reclined[1]] : [sa.default[0], Math.min(sa.default[1], CANVAS.floor - 4 - s.shoulder[1])]
+  const arm = leg
+    ? ik(s.shoulder, add(s.shoulder, staticArm), SEG.uarm, SEG.farm, lower)
+    : ik(s.shoulder, armTarget ?? cur, SEG.uarm, SEG.farm, armPick, REACH.arm)
+  const lg = calfLeg ?? (squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, SEG.thigh, SEG.shin, anterior(s.hip, cur), REACH.leg) : { mid: s.knee, end: s.ankle })
+  s = { ...s, knee: lg.mid, ankle: lg.end }
+
+  const pullF = !leg && d.view === 'frontal' && d.motion === 'tiron'
+  const armsFront = !leg && (d.motion === 'apertura' || d.motion === 'elevacion' || pullF)
+  const lift = d.motion === 'elevacion' || pullF
+  const closing = B[0] > A[0]
+  const th0 = pullF ? 45 : lift ? 12 : closing ? 92 : 14, th1 = pullF ? 90 : lift ? 86 : closing ? 14 : 92
+  const theta = ((th0 + (th1 - th0) * p) * Math.PI) / 180
+  const th2 = pullF ? ((-70 + 240 * p) * Math.PI) / 180 : theta - (lift ? 0.18 : 0.32 + 0.5 * (closing ? p : 1 - p))
+  const frontalLegs = leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(B[1] - A[1]) < 2 && Math.abs(B[0] - A[0]) > 3
+  const opening = B[0] > A[0]
+  const kx = (opening ? 22 : 46) + ((opening ? 46 : 22) - (opening ? 22 : 46)) * p
+  const frontal: Frontal = frontalLegs ? { kind: 'legs', kx, opening } : armsFront ? { kind: 'arms', theta, th2, lift, closing, pull: pullF } : null
+
+  // ángulos articulares (+ = sentido natural de flexión)
+  const thighV = sub(s.knee, s.hip), shinV = sub(s.ankle, s.knee)
+  const uarmV = sub(arm.mid, s.shoulder), farmV = sub(arm.end, arm.mid)
+  const torsoDown = sub(s.hip, s.shoulder)
+  const fv = !!frontal
+  const knee = fv ? 0 : signedAngle(thighV, shinV)
+  const elbow = fv ? Math.abs(signedAngle(uarmV, farmV)) : -signedAngle(uarmV, farmV)
+  const hipA = fv ? 0 : -signedAngle(torsoDown, thighV)
+  const shoulderA = fv ? 0 : -signedAngle(torsoDown, uarmV)
+  const ankleA = calf ? SPECIAL.calf.maxPlantarflexionDeg * p : 0
+  return {
+    s, arm, leg: lg, footVec, pedal, A, B, V, cur, limbLeg: leg, squat, calf,
+    seated: d.pose === 'sentado' || d.pose === 'sentado-reclinado',
+    horizontal: d.pose === 'tumbado' || d.pose === 'prono',
+    vertical: Math.abs(B[1] - A[1]) > Math.abs(B[0] - A[0]),
+    frontal, armsFront,
+    plane: frontal ? 'frontal' : 'lateral', shoulder: s.shoulder, elbow: arm.mid, wrist: arm.end, hip: s.hip, knee: s.knee, ankle: s.ankle, torsoUp: s.up,
+    headTop: s.shoulder[1] + s.up[1] * (SEG.neckVisible + SEG.head), target: armTarget, plantarDeg: ankleA,
+    frontalElbowDeg: fv ? Math.abs(signedAngle(uarmV, farmV)) : undefined,
+    joints: { knee: reading(knee), elbow: reading(elbow), hip: reading(hipA), shoulder: reading(shoulderA), ankle: reading(ankleA) },
+  }
+}
+
+export interface JointViolation { joint: JointName; p: number; deg: number; reason: 'hiperextension' | 'fuera-de-rango' | 'salto' }
+/** Muestrea el ciclo (p de 0 a 1) y devuelve los movimientos imposibles: fuera de rango, hiperextensión de rodilla/codo o saltos bruscos entre fotogramas. */
+export function jointViolations(d: MovementDiagram, steps = 60, maxJump = 25): JointViolation[] {
+  const out: JointViolation[] = []
+  let prev: RigPose | null = null
+  const names: JointName[] = ['knee', 'elbow', 'hip', 'shoulder', 'ankle']
+  for (let i = 0; i <= steps; i++) {
+    const p = i / steps, pose = poseAt(d, p)
+    for (const j of names) {
+      const deg = pose.joints[j].deg, [lo, hi] = JOINT_RANGE[j]
+      if (deg < lo || deg > hi) out.push({ joint: j, p, deg, reason: (j === 'knee' || j === 'elbow') && deg < lo ? 'hiperextension' : 'fuera-de-rango' })
+      if (prev && Math.abs(deg - prev.joints[j].deg) > maxJump) out.push({ joint: j, p, deg, reason: 'salto' })
+    }
+    prev = pose
+  }
+  return out
 }

@@ -13,12 +13,12 @@ function Figure({ title, back, levels }: { title: string; back: boolean; levels:
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const defs = useMemo(() => androidDefs(uid), [uid])
   const body = useMemo(() => {
-    const sc = buildFront({ back, hy: frontLayout(false).hy, arms: armsAt(0.36, 0.3), levels })
-    return renderAndroid(sc, { id: uid, hot: 0.85 })
+    const sc = buildFront({ id: uid, hot: 0.85, back, hy: frontLayout(false).hy, arms: armsAt(0.12, 0.07), levels })
+    return renderAndroid(sc)
   }, [back, levels, uid])
   return (
     <figure className="m-0 flex-1">
-      <svg viewBox="50 2 120 172" className="mx-auto block h-auto w-full max-w-[130px] sm:max-w-[170px]" role="img" aria-label={title}>
+      <svg viewBox="52 4 116 168" className="mx-auto block h-auto w-full max-w-[150px] rounded-2xl sm:max-w-[190px]" style={{ background: 'var(--a-figbg)' }} role="img" aria-label={title}>
         <defs dangerouslySetInnerHTML={{ __html: defs }} />
         <g dangerouslySetInnerHTML={{ __html: body }} />
       </svg>

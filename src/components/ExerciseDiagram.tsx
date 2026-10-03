@@ -1,29 +1,19 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ExerciseGuide, MovementDiagram } from '../lib/guideTypes'
-import { basePose, CANVAS, REACH, SEG, SPECIAL, toPx } from '../lib/rigSpec'
+import { CANVAS } from '../lib/rigSpec'
 import type { MuscleGroup } from '../lib/types'
-import { add, anterior, higher, ik, lower, mix, type P, smooth } from './android/geom'
+import { add, type P, poseAt, smooth } from './android/geom'
 import { androidDefs, renderAndroid } from './android/render'
-import { armsAt, bits, buildFront, buildSide, FRONT_CX, frontLayout, idsFromGroups, type Levels, type Scene } from './android/scene'
+import { armsAt, bits, buildFront, buildSide, FRONT_CX, frontLayout, ghostSide, idsFromGroups, type Levels } from './android/scene'
 
 /**
- * Esquema animado del androide (placas biseladas sobre capa interior oscura): inicio → medio → final → vuelta.
- * La pose se recalcula cada fotograma con cinemática de 2 huesos para brazo o pierna (rigSpec) y la escena
- * resultante se dibuja como SVG; los músculos de `muscleIds` iluminan sus placas en ámbar.
+ * Esquema animado del maniquí facetado: inicio → medio → final → vuelta. La pose sale de `poseAt` (cinemática de
+ * 2 huesos, rigSpec) y la escena resultante se dibuja como SVG; los músculos de `muscleIds` se iluminan en ámbar.
  */
 const FLOOR = CANVAS.floor
-const { torso: TORSO, thigh: THIGH, shin: SHIN, uarm: UARM, farm: FARM } = SEG
 
 const str = (ps: P[]) => ps.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ')
 const n1 = (n: number) => n.toFixed(1)
-
-function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
-  const r = (backAngle * Math.PI) / 180
-  const up: P = [-Math.sin(r), -Math.cos(r)]
-  const { hip, shoulder, ankle } = basePose(pose, backAngle)
-  const knee: P = pose === 'prono' ? [hip[0] - THIGH, hip[1]] : ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid
-  return { hip, shoulder, knee, ankle, up }
-}
 
 type Seg = 'pause0' | 'ida' | 'pause1' | 'vuelta'
 type Timeline = { pz: number; ida: number; vuelta: number; total: number }
@@ -96,7 +86,6 @@ export default function ExerciseDiagram({
   const loadPhase = d.loadPhase ?? 'ida'
   const tl = timeline(phases ? tempo : undefined, loadPhase)
   const [reduced] = useState(() => reduceQuery('(prefers-reduced-motion: reduce)'))
-  const [lite] = useState(() => reduced || reduceQuery('(prefers-reduced-data: reduce)'))
   const [paused, setPaused] = useState(reduced)
   const [visible, setVisible] = useState(true)
   const [t, setT] = useState(reduced ? tl.pz + tl.ida + tl.pz / 2 : tl.pz)
@@ -122,7 +111,7 @@ export default function ExerciseDiagram({
     const tick = (now: number) => {
       clock.current += now - last
       last = now
-      // ~30 fps como mucho; si el equipo tarda en pintar la figura (cientos de nodos SVG) se espacian los fotogramas
+      // ~30 fps como mucho; si el equipo tarda en pintar la figura se espacian los fotogramas
       if (now - drawn >= Math.max(30, Math.min(160, cost.current * 2.5))) { drawn = now; stamp.current = performance.now(); setT(clock.current) }
       raf = requestAnimationFrame(tick)
     }
@@ -145,110 +134,8 @@ export default function ExerciseDiagram({
   const levels = useMemo(() => levelsOf(muscleIds, primary, secondary), [muscleIds, primary, secondary])
   const defs = useMemo(() => androidDefs(uid), [uid])
 
-  const base = skeleton(d.pose, d.backAngle)
-  let s = base
-  const pt = (q: [number, number]) => toPx(q)
-  let A = pt(d.from), B = pt(d.to), V: P | null = d.via ? pt(d.via) : null
-  let cur: P = V ? (p < 0.5 ? mix(A, V, p * 2) : mix(V, B, (p - 0.5) * 2)) : mix(A, B, p)
-  const leg = d.limb === 'pierna'
-
-  // Colgado: las manos quedan fijas en la barra/asas y es el cuerpo el que sube (marca en el pecho).
-  let armTarget: P | null = null
-  let armPick = d.elbow === 'arriba' ? higher : lower
-  if (d.pose === 'colgado') {
-    const { rise, pullStart, dipStart } = SPECIAL.colgado
-    const pull = d.motion === 'tiron'
-    const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
-    const bodyAt = (q: number): P => [pull ? H[0] - 12 : H[0], pull ? H[1] + pullStart - rise * q : H[1] + dipStart - rise * q]
-    const chest = (q: number): P => add(bodyAt(q), [13, 14])
-    const sh = bodyAt(p)
-    const hip: P = [sh[0], sh[1] + TORSO]
-    const ankle: P = [hip[0] - 10, Math.min(hip[1] + 34, FLOOR - 4)]
-    s = { shoulder: sh, hip, ankle, knee: ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid, up: [0, -1] }
-    A = chest(0); B = chest(1); V = null; cur = chest(p)
-    armTarget = H
-    if (!pull) armPick = (a, b) => (a[0] < b[0] ? a : b)
-  }
-  // Hip thrust: espalda alta fija en el banco, el recorrido es el de la cadera.
-  if (d.pose === 'tumbado' && d.motion === 'bisagra' && !leg) {
-    const S0 = base.shoulder
-    const l = Math.hypot(cur[0] - S0[0], cur[1] - S0[1]) || 1
-    const hip: P = [S0[0] + ((cur[0] - S0[0]) / l) * TORSO, S0[1] + ((cur[1] - S0[1]) / l) * TORSO]
-    const k = ik(hip, base.ankle, THIGH, SHIN, anterior(hip, base.ankle))
-    s = { shoulder: S0, hip, ankle: k.end, knee: k.mid, up: [(S0[0] - hip[0]) / TORSO, (S0[1] - hip[1]) / TORSO] }
-  }
-
-  const squat = leg && d.motion === 'sentadilla'
-  if (squat) {
-    const A0 = A, hipOf = (c: P): P => [base.hip[0] + (A0[0] - c[0]), base.hip[1] + (A0[1] - c[1])]
-    const hip = hipOf(cur)
-    // la marca sigue a la cadera (lo que realmente baja), no al pie
-    const pathAt = (q: number): P => (V ? (q < 0.5 ? mix(A0, V, q * 2) : mix(V, B, (q - 0.5) * 2)) : mix(A0, B, q))
-    A = hipOf(pathAt(0)); B = hipOf(pathAt(1)); cur = hip; V = null
-    const shift: P = [hip[0] - base.hip[0], hip[1] - base.hip[1]]
-    const k = ik(hip, base.ankle, THIGH, SHIN, anterior(hip, base.ankle), REACH.leg)
-    s = { shoulder: add(base.shoulder, shift), hip, ankle: k.end, knee: k.mid, up: base.up }
-  }
-
-  // Elevación de gemelos: cadera, rodilla y tobillo FIJOS; solo gira el pie (plantarflexión) empujando un pedal.
-  const calf = leg && d.motion === 'elevacion'
-  const rot = (v: P, a: number): P => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]
-  let footVec: P | null = null
-  let calfLeg: { mid: P; end: P } | null = null
-  let pedal: [P, P] | null = null
-  if (calf) {
-    const reclined = d.pose === 'sentado-reclinado'
-    let rest: { mid: P; end: P }
-    if (reclined) {
-      // Prensa: piernas casi rectas, inclinadas hacia el punto de partida del pie.
-      const dl = Math.hypot(A[0] - s.hip[0], A[1] - s.hip[1]) || 1
-      const tgt: P = [s.hip[0] + ((A[0] - s.hip[0]) / dl) * (THIGH + SHIN), s.hip[1] + ((A[1] - s.hip[1]) / dl) * (THIGH + SHIN)]
-      rest = ik(s.hip, tgt, THIGH, SHIN, anterior(s.hip, tgt), REACH.legRigid)
-    } else {
-      // Sentado: rodilla ~90°; el tobillo queda algo elevado para que el pedal gire sin hundirse en el suelo.
-      const tgt: P = [A[0], FLOOR - 9]
-      rest = ik(s.hip, tgt, THIGH, SHIN, anterior(s.hip, tgt), REACH.leg)
-    }
-    const l0 = Math.hypot(rest.end[0] - rest.mid[0], rest.end[1] - rest.mid[1]) || 1
-    const f0: P = [(rest.end[1] - rest.mid[1]) / l0, -(rest.end[0] - rest.mid[0]) / l0]
-    const fvAt = (q: number) => rot(f0, (SPECIAL.calf.maxPlantarflexionDeg * Math.PI * q) / 180)
-    const toe = SPECIAL.calf.toeLength
-    const toeAt = (q: number): P => add(rest.end, [fvAt(q)[0] * toe, fvAt(q)[1] * toe])
-    footVec = fvAt(p)
-    calfLeg = rest
-    const sole: P = [-footVec[1], footVec[0]]
-    pedal = [
-      add(rest.end, [sole[0] * 8 - footVec[0] * 7, sole[1] * 8 - footVec[1] * 7]),
-      add(rest.end, [sole[0] * 8 + footVec[0] * 21, sole[1] * 8 + footVec[1] * 21]),
-    ]
-    A = toeAt(0); B = toeAt(1); V = null; cur = toeAt(p)
-  }
-  // Brazo que no trabaja: cuelga (o agarra el asa en prono / la barra en sentadilla), sin atravesar suelo ni banco.
-  const sa = SPECIAL.staticArm
-  const staticArm: P = d.pose === 'prono' ? [...sa.prono] as P : squat ? [...sa.squat] as P : d.pose === 'sentado-reclinado' ? [...sa.reclined] as P : [sa.default[0], Math.min(sa.default[1], FLOOR - 4 - s.shoulder[1])]
-  const arm = leg
-    ? ik(s.shoulder, add(s.shoulder, staticArm), UARM, FARM, lower)
-    : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, REACH.arm)
-  const lg = calfLeg ?? (squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, anterior(s.hip, cur), REACH.leg) : { mid: s.knee, end: s.ankle })
-
-  // Geometría de vista frontal / implemento
-  const bk: P = [-Math.cos((d.backAngle * Math.PI) / 180), Math.sin((d.backAngle * Math.PI) / 180)]
-  const padA = add(s.hip, [bk[0] * 16 - s.up[0] * 4, bk[1] * 16 - s.up[1] * 4])
-  const padB = add(s.shoulder, [bk[0] * 17 + s.up[0] * 14, bk[1] * 17 + s.up[1] * 14])
-  const pull = !leg && d.view === 'frontal' && d.motion === 'tiron'
-  const armsFront = !leg && (d.motion === 'apertura' || d.motion === 'elevacion' || pull)
-  const lift = d.motion === 'elevacion' || pull
-  const closing = B[0] > A[0]
-  const th0 = pull ? 45 : lift ? 12 : closing ? 92 : 14, th1 = pull ? 90 : lift ? 86 : closing ? 14 : 92
-  const theta = ((th0 + (th1 - th0) * p) * Math.PI) / 180
-  // face pull: del agarre al frente (antebrazos hacia dentro) a codos altos con antebrazos verticales
-  const th2 = pull ? ((-70 + 240 * p) * Math.PI) / 180 : theta - (lift ? 0.18 : 0.32 + 0.5 * (closing ? p : 1 - p))
-  const frontal = leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(B[1] - A[1]) < 2 && Math.abs(B[0] - A[0]) > 3
-  const opening = B[0] > A[0]
-  const kx = (opening ? 22 : 46) + ((opening ? 46 : 22) - (opening ? 22 : 46)) * p
-  const horizontal = d.pose === 'tumbado' || d.pose === 'prono'
-  const seated = d.pose === 'sentado' || d.pose === 'sentado-reclinado'
-  const vertical = Math.abs(B[1] - A[1]) > Math.abs(B[0] - A[0])
+  const pose = poseAt(d, p)
+  const { s, arm, A, B, V, cur, frontal } = pose
 
   // Recorrido: la flecha de carga apunta SIEMPRE en el sentido de la fase concéntrica;
   // la vuelta (excéntrica) va en tenue, desplazada, en sentido contrario.
@@ -258,9 +145,7 @@ export default function ExerciseDiagram({
   const nl = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1
   const off: P = [(-(B[1] - A[1]) / nl) * 5, ((B[0] - A[0]) / nl) * 5]
   const retArrow = arrowOn([...loadPts].reverse().map((q) => add(q, off)))
-  const markStyle = !phases || concentric
-    ? 'fill:var(--signal);stroke:var(--ink)'
-    : 'fill:var(--surface);stroke:var(--signal)'
+  const markStyle = !phases || concentric ? 'fill:var(--signal);stroke:var(--ink)' : 'fill:var(--surface);stroke:var(--signal)'
   const markDash = !phases || concentric ? '' : 'stroke-dasharray="2 1.5"'
   const verb = (() => {
     if (d.motion === 'apertura') return (d.loadPhase === 'vuelta' ? B[0] <= A[0] : B[0] > A[0]) ? 'Juntas' : 'Abres'
@@ -281,30 +166,32 @@ export default function ExerciseDiagram({
       `<polygon points="${str(head)}" stroke-width=".6" stroke-linejoin="round" style="fill:var(--signal);stroke:var(--ink)"/></g>`
   }
   const armOp = !phases || concentric ? 1 : 0.35
+  const common = { id: uid, hot, levels }
 
-  let sc: Scene
-  if (frontal) {
+  let sc
+  if (frontal?.kind === 'legs') {
     const L = frontLayout(true)
-    sc = buildFront({ hy: L.hy, kneeX: kx, arms: armsAt(0.17, 0.1), levels })
+    sc = buildFront({ ...common, hy: L.hy, kneeX: frontal.kx, arms: armsAt(0.12, 0.07) })
     sc.back.push(bits.shadow(FRONT_CX, FLOOR + 1, 46, uid))
     sc.back.push(bits.line([FRONT_CX, L.sy - 2], [FRONT_CX, L.hy + 6], 30), bits.line([FRONT_CX - 28, L.hy + 13], [FRONT_CX + 28, L.hy + 13], 7))
-    const loadOpening = loadPhase === 'vuelta' ? !opening : opening
+    const loadOpening = loadPhase === 'vuelta' ? !frontal.opening : frontal.opening
     for (const sd of [-1, 1]) {
       const kneeY = L.hy + 3
-      sc.back.push(bits.line([FRONT_CX + sd * (kx + 12), kneeY - 8], [FRONT_CX + sd * (kx + 12), kneeY + 20], 6))
-      const tipX = FRONT_CX + sd * (kx + (loadOpening ? 34 : 21)), tailX = FRONT_CX + sd * (kx + (loadOpening ? 21 : 34))
+      sc.back.push(bits.line([FRONT_CX + sd * (frontal.kx + 12), kneeY - 8], [FRONT_CX + sd * (frontal.kx + 12), kneeY + 20], 6))
+      const tipX = FRONT_CX + sd * (frontal.kx + (loadOpening ? 34 : 21)), tailX = FRONT_CX + sd * (frontal.kx + (loadOpening ? 21 : 34))
       const y = kneeY + 1
       sc.front.push(`<g opacity="${armOp}"><line x1="${n1(tailX)}" y1="${n1(y)}" x2="${n1(tipX)}" y2="${n1(y)}" stroke-width="2" stroke-linecap="round" style="stroke:var(--signal)"/>` +
         `<polygon points="${str([[tipX, y], [tipX - sd * 6, y - 3.5], [tipX - sd * 6, y + 3.5]])}" stroke-width=".6" stroke-linejoin="round" style="fill:var(--signal);stroke:var(--ink)"/></g>`)
-      sc.front.push(sq([FRONT_CX + sd * kx, kneeY], 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
+      sc.front.push(sq([FRONT_CX + sd * frontal.kx, kneeY], 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
     }
-  } else if (armsFront) {
+  } else if (frontal?.kind === 'arms') {
     const seatedArms = d.pose.startsWith('sentado')
     const L = frontLayout(seatedArms)
-    sc = buildFront({ hy: L.hy, kneeX: seatedArms ? 11 : undefined, arms: armsAt(theta, th2), levels })
+    const mk = armsAt(frontal.theta, frontal.th2)
+    sc = buildFront({ ...common, hy: L.hy, kneeX: seatedArms ? 11 : undefined, arms: mk })
     sc.back.push(bits.shadow(FRONT_CX, FLOOR + 1, 46, uid))
     if (seatedArms) sc.back.push(bits.line([FRONT_CX - 26, L.hy + 14], [FRONT_CX + 26, L.hy + 14], 7))
-    const hands = armsAt(theta, th2)(L.sy)
+    const hands = mk(L.sy)
     if (d.implement === 'polea') {
       for (const a of hands) {
         const tx = FRONT_CX + a.sd * 96
@@ -313,21 +200,25 @@ export default function ExerciseDiagram({
     }
     for (const a of hands) {
       const flip = loadPhase === 'vuelta' ? -1 : 1
-      const dir: P = lift ? [0, -flip] : closing ? [-a.sd * flip, 0] : [a.sd * flip, 0]
-      const o: P = lift ? [a.sd * 13, 0] : [0, 14]
+      const dir: P = frontal.lift ? [0, -flip] : frontal.closing ? [-a.sd * flip, 0] : [a.sd * flip, 0]
+      const o: P = frontal.lift ? [a.sd * 13, 0] : [0, 14]
       sc.front.push(arrowHand(add(a.hand, o), dir, armOp))
       sc.front.push(sq(a.hand, 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
     }
   } else {
     sc = buildSide({
-      hip: s.hip, shoulder: s.shoulder, up: s.up, knee: lg.mid, ankle: lg.end, armMid: arm.mid, armEnd: arm.end,
-      footVec: footVec ?? undefined, levels,
+      ...common, hip: s.hip, shoulder: s.shoulder, up: s.up, knee: s.knee, ankle: s.ankle, armMid: arm.mid, armEnd: arm.end,
+      footVec: pose.footVec ?? undefined,
     })
-    const cx = (s.hip[0] + lg.end[0]) / 2
+    const cx = (s.hip[0] + s.ankle[0]) / 2
     sc.back.push(bits.shadow(Math.max(60, Math.min(160, cx + 6)), FLOOR + 1, 58, uid))
-    if (seated || horizontal) sc.back.push(bits.line(padA, padB, 9))
-    if (seated) sc.back.push(bits.line([s.hip[0] - 12, s.hip[1] + 15], [s.hip[0] + 16, s.hip[1] + 15], 7), bits.line([s.hip[0] - 4, s.hip[1] + 19], [s.hip[0] - 4, FLOOR], 5))
-    if (horizontal) {
+    const bkA = (d.backAngle * Math.PI) / 180
+    const bk: P = [-Math.cos(bkA), Math.sin(bkA)]
+    const padA = add(s.hip, [bk[0] * 16 - s.up[0] * 4, bk[1] * 16 - s.up[1] * 4])
+    const padB = add(s.shoulder, [bk[0] * 17 + s.up[0] * 14, bk[1] * 17 + s.up[1] * 14])
+    if (pose.seated || pose.horizontal) sc.back.push(bits.line(padA, padB, 9))
+    if (pose.seated) sc.back.push(bits.line([s.hip[0] - 12, s.hip[1] + 15], [s.hip[0] + 16, s.hip[1] + 15], 7), bits.line([s.hip[0] - 4, s.hip[1] + 19], [s.hip[0] - 4, FLOOR], 5))
+    if (pose.horizontal) {
       sc.back.push(
         bits.line([s.hip[0] - 4, s.hip[1] + 19], [s.hip[0] + 24, s.hip[1] + 19], 7),
         bits.line([Math.min(s.hip[0], s.shoulder[0]) + 6, s.hip[1] + 23], [Math.min(s.hip[0], s.shoulder[0]) + 6, FLOOR], 5),
@@ -335,19 +226,21 @@ export default function ExerciseDiagram({
       )
     }
     if (d.implement === 'polea') {
-      if (vertical) sc.back.push(bits.line([10, 12], [210, 12], 5), bits.ring([A[0], 12], 7), bits.rope([A[0], 12], cur))
+      if (pose.vertical) sc.back.push(bits.line([10, 12], [210, 12], 5), bits.ring([A[0], 12], 7), bits.rope([A[0], 12], cur))
       else sc.back.push(bits.line([205, 8], [205, FLOOR], 8), bits.ring([205, A[1]], 7), bits.rope([205, A[1]], cur))
     }
     if (d.implement === 'multipower') sc.back.push(bits.line([A[0], 8], [A[0], FLOOR], 5), bits.dot(cur, 4.5))
-    if (pedal) sc.back.push(bits.line(pedal[0], pedal[1], 3.5))
-    if (d.implement === 'maquina' && !calf) sc.back.push(bits.dot([cur[0] + 3, cur[1] - 1], 3.5))
-    // recorrido: línea punteada + flecha + marca de inicio
+    if (pose.pedal) sc.back.push(bits.line(pose.pedal[0], pose.pedal[1], 3.5))
+    if (d.implement === 'maquina' && !pose.calf) sc.back.push(bits.dot([cur[0] + 3, cur[1] - 1], 3.5))
+    // pose inicial fantasma, recorrido y marca de inicio
+    const g0 = poseAt(d, 0)
+    sc.back.push(ghostSide({ hip: g0.s.hip, shoulder: g0.s.shoulder, up: g0.s.up, knee: g0.s.knee, ankle: g0.s.ankle, armMid: g0.arm.mid, armEnd: g0.arm.end }))
     sc.back.push(arrowSvg(concentric || !phases ? 1 : 0.35))
     sc.back.push(sq(A, 3.5, 'fill:var(--surface);stroke:var(--signal)', 'stroke-width="1.5"'))
     sc.front.push(sq(cur, 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
   }
 
-  const body = renderAndroid(sc, { id: uid, hot, lite })
+  const body = renderAndroid(sc)
   const active = stepOf(p)
   const label = steps ? steps[active] : (d.caption ?? 'Recorrido del movimiento')
 
@@ -356,17 +249,14 @@ export default function ExerciseDiagram({
       <div className="relative" ref={wrap}>
         <svg
           viewBox={`0 0 ${CANVAS.w} ${CANVAS.h}`}
-          className="block h-auto w-full cursor-pointer rounded-2xl border border-hair bg-surface"
+          className="block h-auto w-full cursor-pointer rounded-2xl border border-hair"
+          style={{ background: 'var(--a-figbg)' }}
           role="img"
           aria-label={d.caption ?? 'Esquema del ejercicio'}
           onClick={() => setPaused((x) => !x)}
         >
-          <defs>
-            <pattern id={`${uid}-dg`} width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.6" fill="var(--hair)" /></pattern>
-          </defs>
           <defs dangerouslySetInnerHTML={{ __html: defs }} />
-          <rect width={CANVAS.w} height={CANVAS.h} fill={`url(#${uid}-dg)`} />
-          {(frontal || armsFront) && <text x="8" y={CANVAS.h - 3} fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>}
+          {frontal && <text x="8" y={CANVAS.h - 3} fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>}
           <line x1="6" x2="214" y1={FLOOR + 1} y2={FLOOR + 1} stroke="var(--ink)" strokeWidth="2" />
           <g dangerouslySetInnerHTML={{ __html: body }} />
         </svg>

@@ -1,32 +1,14 @@
 import { ANDROID, CANVAS, SEG, standingHipY } from '../../lib/rigSpec'
 import { MUSCLE_ID_GROUP, MUSCLE_IDS, type MuscleId } from '../../lib/guideTypes'
 import type { MuscleGroup } from '../../lib/types'
-import {
-  add, ellipse, type P, place, seg, type Seg, unit, mix,
-} from './geom'
-import * as S from './shapes'
+import { add, mul, nrm, type P, sub, unit } from './geom'
+import { band, block, hand, kneecap, newCtx, type Ctx, type Zone } from './dummy'
 
 /**
- * Descripción de la escena del androide: masas interiores, placas (carcasa + músculos) y articulaciones.
- * Es independiente del estilo de dibujo; el renderizador (render.ts) la convierte en SVG.
+ * Escena del maniquí: monta las piezas facetadas (dummy.ts) según la pose del rig y los músculos a resaltar.
+ * Devuelve fragmentos SVG: `back` (utillaje y recorrido), `body` (la figura) y `front` (marcas).
  */
-export type Lvl = 'p' | 's' | 'n'
-export type PlateKind = 'shell' | 'plate' | 'helmet' | 'mask' | 'visor' | 'fist' | 'foot'
-export interface Plate { id: string; k: PlateKind; pts: P[]; fib: P[][]; lvl: Lvl; /** placa grande: lleva bisel interior y brillo */ big?: boolean }
-export interface Scene {
-  /** viewBox: x, y, w, h */
-  box: [number, number, number, number]
-  masses: P[][]
-  plates: Plate[]
-  joints: { p: P; r: number }[]
-  axes: [P, P][]
-  /** Fragmentos SVG: `back` va bajo la figura (utillaje, trayectoria), `front` encima (marcas). */
-  /** Trazos finos entre placas (junta central, costuras). */
-  lines: P[][]
-  back: string[]
-  front: string[]
-}
-
+export interface Scene { back: string[]; body: string[]; front: string[] }
 export interface Levels { prim: ReadonlySet<string>; sec: ReadonlySet<string> }
 
 /** Ids concretos a partir de grupos (respaldo cuando la ficha no trae muscleIds). */
@@ -39,65 +21,13 @@ export function idsFromGroups(groups: readonly MuscleGroup[]): string[] {
   return out
 }
 
-/** En vista lateral algunos músculos no tienen placa propia: se ilumina la más cercana. */
-const LATERAL_ALIAS: Record<string, string[]> = {
-  trapM: ['rhomb'], teres: ['infra'], brachrad: ['fflex'], vmed: ['add'], ham: ['hamS'], gastroc: ['gastrocM'],
-}
-const FAMILY = (id: string): string | null =>
-  /^(rectus|serr)\d$/.test(id) ? id.slice(0, -1) : id === 'hamS' ? 'ham' : id === 'gastrocM' ? 'gastroc' : null
+/** Nivel de una zona: principal si alguno de sus ids lo es, secundario si no, ninguno en otro caso. */
+const zn = (L: Levels, ids: string[]): Zone => (ids.some((i) => L.prim.has(i)) ? 'p' : ids.some((i) => L.sec.has(i)) ? 's' : null)
 
-export function lvlOf(L: Levels, id: string, lateral = false): Lvl {
-  const c = [id]
-  const fam = FAMILY(id)
-  if (fam) c.push(fam)
-  if (lateral && LATERAL_ALIAS[id]) c.push(...LATERAL_ALIAS[id])
-  if (c.some((x) => L.prim.has(x))) return 'p'
-  if (c.some((x) => L.sec.has(x))) return 's'
-  return 'n'
-}
-
-const empty = (box: Scene['box']): Scene => ({ box, masses: [], plates: [], joints: [], axes: [], lines: [], back: [], front: [] })
-const CANVAS_BOX: Scene['box'] = [0, 0, CANVAS.w, CANVAS.h]
-
-/** Región muscular: banda entre dos posiciones relativas (-1 cara posterior … +1 cara anterior) a lo largo de un segmento. */
-export function region(sg: Seg, t0: number, t1: number, s0: number, s1: number, o: { pk?: number; pw?: number; floor?: number } = {}) {
-  const N = 9, pk = o.pk ?? 0.5, pw = o.pw ?? 0.75, fl = o.floor ?? 0
-  const e = Math.log(0.5) / Math.log(pk)
-  const bul = (k: number) => fl + (1 - fl) * Math.pow(Math.sin(Math.PI * Math.pow(k, e)), pw)
-  const mid = (s0 + s1) / 2, half = (s1 - s0) / 2
-  const A: P[] = [], B: P[] = []
-  for (let i = 0; i <= N; i++) {
-    const k = i / N, t = t0 + (t1 - t0) * k, b = bul(k)
-    A.push(sg.edge(t, mid + half * b)); B.push(sg.edge(t, mid - half * b))
-  }
-  const fib = [0.22, 0.5, 0.78].map((q) => {
-    const L: P[] = []
-    for (let i = 0; i <= N; i++) {
-      const k = i / N, t = t0 + (t1 - t0) * k
-      L.push(sg.edge(t, mid + half * bul(k) * (2 * q - 1)))
-    }
-    return L
-  })
-  return { pts: [...A, ...B.reverse()], fib }
-}
-type Built = { pts: P[]; fib?: P[][] }
-/** Abanico: fibras que convergen desde varios orígenes a un punto de inserción. */
-function fan(origins: P[], ins: P, bow: number): P[][] {
-  return origins.map((o) => {
-    const m = mix(o, ins, 0.5), d = unit([ins[0] - o[0], ins[1] - o[1]])
-    return [o, [m[0] - d[1] * bow, m[1] + d[0] * bow] as P, ins]
-  })
-}
-
-function plateAdder(sc: Scene, L: Levels, lateral: boolean) {
-  // solo se dibujan los músculos trabajados: el resto queda bajo la carcasa del segmento
-  return (id: string, b: Built) => {
-    const lvl = lvlOf(L, id, lateral)
-    if (lvl !== 'n') sc.plates.push({ id, k: 'plate', pts: b.pts, fib: b.fib ?? [], lvl })
-  }
-}
-const shellOf = (sg: Seg, t0: number, t1: number, pw = 0.3): Plate => ({ id: 'shell', k: 'shell', pts: region(sg, t0, t1, -0.96, 0.96, { pk: 0.5, pw }).pts, fib: [], lvl: 'n' })
-const extra = (id: string, k: PlateKind, pts: P[]): Plate => ({ id, k, pts, fib: [], lvl: 'n' })
+const empty = (): Scene => ({ back: [], body: [], front: [] })
+const HEAD = 22 // alto visual del casco (el rig usa SEG.head para el límite del lienzo)
+const LT_SIDE: P = [0.55, -0.8]
+const LT_FRONT: P = [-0.55, -0.8]
 
 /** Utillaje: líneas redondeadas, anillos, cuerdas y sombra, con colores del tema por variables CSS. */
 export const bits = {
@@ -114,79 +44,76 @@ export const bits = {
 
 /* ===== Vista lateral ===== */
 export interface SideIn {
+  id: string; hot: number; levels: Levels
   hip: P; shoulder: P; /** vector unitario hombro→cabeza */ up: P
   knee: P; ankle: P; armMid: P; armEnd: P
   /** dirección de la punta del pie (por defecto, perpendicular a la espinilla) */
   footVec?: P
-  levels: Levels
 }
+/** Normal «delantera» de un miembro que va hacia abajo (muslo, espinilla, brazo, antebrazo). */
+const fnLimb = (a: P, b: P): P => { const t = unit(sub(b, a)); return [t[1], -t[0]] }
+/** Normal delantera del tronco (de la cadera al hombro). */
+const fnTrunk = (a: P, b: P): P => { const t = unit(sub(b, a)); return [-t[1], t[0]] }
+
+const THS: { fr: [number, number][]; bk: [number, number][] } = {
+  fr: [[0, 3.6], [0.08, 5.2], [0.25, 7.8], [0.5, 9.4], [0.8, 8], [1, 7]],
+  bk: [[0, 9], [0.1, 9.6], [0.4, 9.4], [0.8, 8], [1, 7]],
+}
+
 export function buildSide(o: SideIn): Scene {
-  const sc = empty(CANVAS_BOX)
-  const { hip, shoulder, up, knee, ankle } = o
-  const torso = seg(hip, shoulder, S.NP.torso, -1)
-  const neck = seg(shoulder, add(shoulder, [up[0] * ANDROID.neck, up[1] * ANDROID.neck]), S.NP.neck, -1)
-  const thigh = seg(hip, knee, S.NP.thigh), shin = seg(knee, ankle, S.NP.shin)
-  const uarm = seg(shoulder, o.armMid, S.NP.uarm), farm = seg(o.armMid, o.armEnd, S.NP.farm)
-  const hc = add(shoulder, [up[0] * ANDROID.headCenter, up[1] * ANDROID.headCenter])
-  for (const s of [thigh, shin, torso, neck, uarm, farm]) sc.masses.push(s.outline)
-  const f0 = o.footVec ?? shin.f, sole: P = [-f0[1], f0[0]]
-  const hd = unit([o.armEnd[0] - o.armMid[0], o.armEnd[1] - o.armMid[1]])
-  const foot = place(ankle, f0, sole, S.FOOT_P), fist = place(o.armEnd, hd, farm.f, S.FIST_P), helmet = place(hc, neck.f, up, S.HELMET_P)
-  sc.masses.push(foot, fist, place(o.armEnd, hd, farm.f, S.THUMB_P), helmet,
-    ellipse(shoulder[0], shoulder[1], S.SHOULDER.rx, S.SHOULDER.ry), ellipse(o.armMid[0], o.armMid[1], 3.8, 3.8), ellipse(hip[0], hip[1], S.HIP.rx, S.HIP.ry), ellipse(knee[0], knee[1], 5, 5))
-  sc.joints.push({ p: shoulder, r: 5 }, { p: o.armMid, r: 4 }, { p: hip, r: 5.6 }, { p: knee, r: 5 })
-  // carcasa: pocas placas grandes (pelvis, abdomen, pecho, hombrera, brazo, antebrazo, muslo, gemelo) sobre la capa interior
-  sc.plates.push(
-    shellOf(thigh, 0.02, 0.98, 0.14), shellOf(shin, 0.04, 0.97, 0.14),
-    { ...shellOf(torso, -0.32, 0.1, 0.3), big: true }, { ...shellOf(torso, 0.13, 0.5, 0.2), big: true }, { ...shellOf(torso, 0.53, 1.08, 0.2), big: true },
-    shellOf(uarm, 0.12, 0.97, 0.14), shellOf(farm, 0.06, 0.97, 0.14),
-    { id: 'shell', k: 'shell', fib: [], lvl: 'n', big: true, pts: ellipse(shoulder[0], shoulder[1], 7.4, 7.8) },
-  )
-  const m = plateAdder(sc, o.levels, true)
-  const t = torso, u = uarm, fa = farm, th = thigh, sh = shin
-  const ins = u.edge(0.34, 0.5)
-  m('pec', { pts: [t.edge(0.6, 0.92), t.edge(0.78, 1), t.edge(0.88, 0.95), u.edge(0.34, 0.6), u.edge(0.4, 0.7), u.edge(0.4, 0.05), t.edge(0.7, 0.15)], fib: fan([t.edge(0.6, 0.85), t.edge(0.68, 0.9), t.edge(0.76, 0.92)], ins, 1.4) })
-  m('pecC', { pts: [t.edge(0.86, 0.92), t.edge(0.97, 0.9), u.edge(0.28, 0.9), u.edge(0.34, 0.6)], fib: fan([t.edge(0.88, 0.88), t.edge(0.94, 0.86)], ins, 0.8) })
-  m('trap', region(t, 0.8, 1.1, -1, -0.2, { pk: 0.5 }))
-  m('trapM', region(t, 0.28, 0.66, -0.95, -0.5, { pk: 0.45 }))
-  m('lat', { pts: [t.edge(0.06, -0.9), t.edge(0.3, -1), t.edge(0.6, -0.95), t.edge(0.82, -0.6), u.edge(0.2, -0.1), u.edge(0.32, -0.1), u.edge(0.32, -0.7), t.edge(0.62, -0.35), t.edge(0.3, -0.4)], fib: fan([t.edge(0.1, -0.8), t.edge(0.3, -0.9), t.edge(0.55, -0.85)], u.edge(0.26, -0.3), 1.0) })
-  m('teres', region(t, 0.74, 0.92, -0.9, -0.5, { pk: 0.5 }))
-  m('erector', region(t, 0.0, 0.7, -0.95, -0.45, { pk: 0.5 }))
-  m('glute', region(t, -0.2, 0.16, -1, -0.02, { pk: 0.4 }))
-  m('gmed', region(t, -0.16, 0.16, -0.4, 0.25, { pk: 0.5 }))
-  m('oblique', region(t, 0.1, 0.56, -0.25, 0.6, { pk: 0.55 }))
-  m('rectus', region(t, 0.05, 0.56, 0.55, 1.0, { pk: 0.5, pw: 0.5 }))
-  for (let j = 0; j < 3; j++) m('serr' + j, region(t, 0.5 + 0.08 * j, 0.59 + 0.08 * j, 0.3, 1.0, { pk: 0.5 }))
-  m('dant', region(u, -0.05, 0.5, 0.1, 1, { pk: 0.35 }))
-  m('dlat', region(u, -0.05, 0.55, -0.45, 0.45, { pk: 0.4 }))
-  m('dpost', region(u, -0.05, 0.5, -1, -0.15, { pk: 0.35 }))
-  m('biceps', region(u, 0.22, 0.85, 0.1, 0.95, { pk: 0.55 }))
-  m('triceps', region(u, 0.15, 0.92, -0.95, -0.1, { pk: 0.5 }))
-  m('brachialis', region(u, 0.45, 0.92, -0.35, 0.4, { pk: 0.5 }))
-  m('brachrad', region(fa, -0.02, 0.55, 0.1, 0.95, { pk: 0.3 }))
-  m('fext', region(fa, 0, 0.55, -0.95, -0.1, { pk: 0.3 }))
-  m('rfem', region(th, 0.1, 0.95, 0.15, 0.95, { pk: 0.45 }))
-  m('tfl', region(th, -0.05, 0.3, 0.1, 0.8, { pk: 0.4 }))
-  m('vlat', region(th, 0.28, 0.98, -0.55, 0.35, { pk: 0.55 }))
-  m('vmed', region(th, 0.6, 1.0, 0.2, 0.85, { pk: 0.72 }))
-  m('ham', region(th, 0.18, 0.9, -0.95, -0.1, { pk: 0.45 }))
-  m('gastroc', region(sh, 0.03, 0.52, -0.95, -0.1, { pk: 0.28 }))
-  m('soleus', region(sh, 0.38, 0.82, -0.8, -0.2, { pk: 0.45 }))
-  m('tib', region(sh, 0.12, 0.82, 0.15, 0.9, { pk: 0.4 }))
-  sc.plates.push(extra('foot', 'foot', foot), extra('fist', 'fist', fist), extra('helmet', 'helmet', helmet), extra('visor', 'visor', place(hc, neck.f, up, S.VISOR_P)))
+  const sc = empty(), cx: Ctx = newCtx(o.id, o.hot, LT_SIDE), L = o.levels
+  const { hip, shoulder: sh, up, knee, ankle: A } = o
+  const sp = sub(sh, hip), T = (t: number): P => add(hip, mul(sp, t))
+  const nT = fnTrunk(hip, sh), nTh = fnLimb(hip, knee), nSh = fnLimb(knee, A)
+  const nU = fnLimb(sh, o.armMid), nF = fnLimb(o.armMid, o.armEnd)
+  // pie: talón, empeine y puntera sobre una suela oscura; sigue a la espinilla (o al pedal en gemelos)
+  const ex = o.footVec ?? unit([A[1] - knee[1], -(A[0] - knee[0])]), ey: P = [-ex[1], ex[0]], nUp: P = mul(ey, -1)
+  const F = (x: number, y: number): P => add(A, add(mul(ex, x), mul(ey, y)))
+  block(cx, { a: F(-6, 3), b: F(4.4, 3), wa: 3.1, c: 1.2, n: nUp, k: 0.3 })
+  block(cx, { a: F(3.4, 3.3), b: F(11.4, 3.5), wa: 3, wb: 2.7, c: 1.1, n: nUp, k: 0.3 })
+  block(cx, { a: F(10.4, 3.9), b: F(19.8, 4.2), wa: 2.5, wb: 2, c: 1.5, n: nUp, k: 0.3 })
+  block(cx, { a: F(-5.8, 6.1), b: F(19.6, 6.1), wa: 0.5, c: 0.3, n: nUp, mat: 'dark' })
+  block(cx, { a: knee, b: A, wa: 6.6, wb: 4.2, n: nSh, zones: [zn(L, ['tib']), null, zn(L, ['gastroc', 'gastrocM', 'soleus'])], cut: 'b' })
+  band(cx, A, sub(A, knee), 4, 2)
+  // tronco: núcleo oscuro + pelvis, abdomen y pecho
+  block(cx, { a: T(-0.02), b: T(1), wa: 3.4, c: 0.6, mat: 'dark', n: nT })
+  block(cx, { a: T(-0.16), b: T(0.2), wa: 10.6, wb: 10.8, n: nT, zones: [zn(L, ['tfl']), null, zn(L, ['glute', 'gmed'])], c: 2.6 })
+  block(cx, { a: T(0.25), b: T(0.48), wa: 8, wb: 8.4, n: nT, zones: [zn(L, ['rectus', 'oblique']), null, zn(L, ['erector'])], c: 2 })
+  block(cx, { a: T(0.52), b: T(1.04), wa: 11.6, wb: 12.4, n: nT, zones: [zn(L, ['pec', 'pecC']), null, zn(L, ['lat', 'trap', 'trapM', 'rhomb', 'teres', 'infra'])], c: 3, cut: 'b' })
+  block(cx, { prof: [THS.fr, THS.bk], a: hip, b: add(knee, mul(unit(sub(knee, hip)), 1.6)), wa: 9.2, wb: 7, n: nTh, zones: [zn(L, ['rfem', 'vlat', 'vmed', 'add']), null, zn(L, ['ham', 'hamS'])], c: 2.2 })
+  // cuello y casco liso
+  block(cx, { a: add(sh, mul(up, 3)), b: add(sh, mul(up, 9.6)), wa: 3.4, c: 0.9, mat: 'dark', n: nT })
+  block(cx, { a: add(sh, mul(up, 8)), b: add(sh, mul(up, 8 + HEAD)), wa: 9, c: 2.8, n: nT })
+  // brazo: hombrera sobre el brazo, antebrazo y mano
+  block(cx, { a: sh, b: o.armMid, wa: 7, wb: 5.6, n: nU, zones: [zn(L, ['biceps', 'brachialis']), null, zn(L, ['triceps'])], c: 1.8 })
+  const dz = zn(L, ['dant', 'dlat', 'dpost'])
+  block(cx, { a: add(sh, mul(unit(sub(o.armMid, sh)), -2)), b: add(sh, mul(sub(o.armMid, sh), 0.42)), wa: 8, wb: 7.2, n: nU, zones: [dz, dz, dz], c: 2 })
+  block(cx, { a: sub(o.armMid, mul(unit(sub(o.armEnd, o.armMid)), 2.2)), b: o.armEnd, wa: 5.2, wb: 3.8, n: nF, zones: [zn(L, ['brachrad', 'fflex']), null, zn(L, ['fext'])], c: 1.6 })
+  hand(cx, sub(o.armEnd, unit(sub(o.armEnd, o.armMid))), sub(o.armEnd, o.armMid))
+  sc.body = cx.out
   return sc
+}
+
+/** Silueta fantasma (pose inicial) de la vista lateral. */
+export function ghostSide(o: Pick<SideIn, 'hip' | 'shoulder' | 'up' | 'knee' | 'ankle' | 'armMid' | 'armEnd'>): string {
+  const seg = (a: P, b: P, w0: number, w1: number) => {
+    const d = unit(sub(b, a)), n = nrm(d)
+    return `<polygon points="${[add(a, mul(n, w0)), add(b, mul(n, w1)), sub(b, mul(n, w1)), sub(a, mul(n, w0))].map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke-width=".9" stroke-dasharray="2.2 2.2" stroke-linejoin="round" style="stroke:var(--a-ghost)"/>`
+  }
+  return seg(o.hip, o.shoulder, 9, 10.5) + seg(o.hip, o.knee, 8, 6) + seg(o.knee, o.ankle, 5.6, 3.4) + seg(o.shoulder, o.armMid, 6, 4.8) + seg(o.armMid, o.armEnd, 4.4, 3.2) +
+    seg(add(o.shoulder, mul(o.up, 8)), add(o.shoulder, mul(o.up, 8 + HEAD)), 9, 9)
 }
 
 /* ===== Vistas frontal y posterior ===== */
 export interface FrontArm { sd: -1 | 1; sh: P; el: P; hand: P }
 export interface FrontIn {
+  id: string; hot: number; levels: Levels
   back?: boolean
   /** altura de la cadera; el hombro queda TORSO por encima */
   hy: number
   /** separación de la rodilla respecto al eje (sentado/abducción) o undefined = de pie con piernas rectas */
   kneeX?: number
   arms: (sy: number) => FrontArm[]
-  levels: Levels
   cx?: number
 }
 export const FRONT_CX = 110
@@ -195,106 +122,88 @@ export const frontLayout = (seated: boolean) => {
   return { hy, sy: hy - SEG.torso }
 }
 
+const THF: { out: [number, number][]; inn: [number, number][] } = {
+  out: [[0, 3.4], [0.07, 5], [0.2, 7.2], [0.42, 9.2], [0.7, 8.4], [1, 7]],
+  inn: [[0, 7.2], [0.08, 8.6], [0.3, 9.2], [0.6, 8.4], [1, 7]],
+}
+
 export function buildFront(o: FrontIn): Scene {
-  const sc = empty(CANVAS_BOX)
-  const cx = o.cx ?? FRONT_CX, back = !!o.back
-  const ankleY = CANVAS.floor - SEG.ankleHeight, hy = o.hy, sy = hy - SEG.torso
-  // los músculos se definieron sobre un torso de 48 px: se comprimen por debajo del pecho al torso actual
-  const Ys = (dy: number) => (dy <= 8 ? dy : 8 + (dy - 8) * 0.9)
-  const R = (dx: number, dy: number): P => [cx + dx * S.kx(dy), sy + Ys(dy)]
-  const at = (dx: number, dy: number): P => [cx + dx, sy + dy]
-  const sym = (half: P[]): P[] => [...half.map((q) => at(q[0], q[1])), ...half.slice().reverse().map((q) => at(-q[0], q[1]))]
-  sc.masses.push(sym(S.TORSO_REL))
-  sc.masses.push(seg([cx, sy - 10], [cx, sy + 3], S.NP.neck).outline)
-  const hcy = sy - ANDROID.headCenter
-  sc.masses.push(place([cx, hcy], [1, 0], [0, 1], S.HELMET_FR))
-  const arms = o.arms(sy).map((a) => ({ ...a, ua: seg(a.sh, a.el, S.NP.uarmFr, a.sd), fa: seg(a.el, a.hand, S.NP.farmFr, a.sd) }))
-  const fistOf = (a: FrontArm) => {
-    const d = unit([a.hand[0] - a.el[0], a.hand[1] - a.el[1]])
-    return place(a.hand, d, [-d[1], d[0]], S.FIST_P.map((q): P => [q[0], q[1] * a.sd]))
+  const sc = empty(), cx = newCtx(o.id, o.hot, LT_FRONT), L = o.levels
+  const mx = o.cx ?? FRONT_CX, back = !!o.back
+  const sy = o.hy - SEG.torso
+  const P = (x: number, y: number): P => [mx + x, sy + y]
+  const N: P = [-1, 0]
+  const z3 = (a: Zone, b: Zone, c: Zone): Zone[] => [a, b, c]
+  const arms = o.arms(sy)
+  // brazos (por debajo del tronco): la articulación del hombro entra por el lateral del pecho
+  for (const a of arms) {
+    const sd = a.sd, dA = unit(sub(a.el, a.sh)), n1 = nrm(dA), outerIsA = n1[0] * sd > 0
+    const zz = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerIsA ? [outer, centre, inner] : [inner, centre, outer])
+    const tri = zn(L, ['triceps']), bic = zn(L, ['biceps', 'brachialis'])
+    block(cx, { a: a.sh, b: a.el, wa: 6.2, wb: 5.2, n: n1, sym: true, zones: back ? zz(tri, tri, null) : zz(null, bic, null), c: 1.8 })
+    const fd = unit(sub(a.hand, a.el)), n2 = nrm(fd)
+    block(cx, { a: a.el, b: a.hand, wa: 5, wb: 3.8, n: n2, sym: true, c: 1.6, zones: back ? [null, zn(L, ['fext']), null] : [null, zn(L, ['brachrad', 'fflex']), null] })
+    band(cx, a.el, dA, 4.6, 3.4, true)
+    if (back) kneecap(cx, a.el, dA, 0, [-1, 0])
+    hand(cx, a.hand, sub(a.hand, a.el))
   }
-  for (const a of arms) sc.masses.push(ellipse(a.sh[0], a.sh[1], S.SHOULDER.rx + 0.4, S.SHOULDER.ry + 0.4), a.ua.outline, a.fa.outline, ellipse(a.el[0], a.el[1], 3.8, 3.8), fistOf(a))
-  const kneeX = o.kneeX
-  const legs = ([-1, 1] as const).map((sd) => {
-    const hipP: P = [cx + sd * S.HIP.x, hy]
-    const kneeP: P = kneeX === undefined ? [cx + sd * 12.6, hy + SEG.thigh * 0.995] : [cx + sd * kneeX, hy + 3]
-    const ankP: P = kneeX === undefined ? [cx + sd * 12, ankleY] : [cx + sd * (kneeX + 2), ankleY]
-    const L = { sd, thigh: seg(hipP, kneeP, S.NP.thighFr, sd), shin: seg(kneeP, ankP, S.NP.shinFr, sd), hipP, kneeP, ankP }
-    const ax = ankP[0], fy = CANVAS.floor
-    const foot: P[] = [[ax - 4.4, ankP[1] - 1], [ax + 4.4, ankP[1] - 1], [ax + 6.6, fy - 4], [ax + 8 * sd + 0.6, fy], [ax - 8 * sd - 0.6, fy], [ax - 6.6, fy - 4]]
-    sc.masses.push(L.thigh.outline, L.shin.outline, ellipse(hipP[0], hipP[1], S.HIP.rx, S.HIP.ry), ellipse(kneeP[0], kneeP[1], 5, 5.2), foot)
-    return { ...L, foot }
-  })
-  for (const a of arms) sc.joints.push({ p: a.sh, r: 5 }, { p: a.el, r: 4 })
-  for (const L of legs) sc.joints.push({ p: L.hipP, r: 5.6 }, { p: L.kneeP, r: 5 })
-  // carcasa: pecho en dos lóbulos, abdomen en V, pelvis en V, hombreras y segmentos largos
-  const flat = (pts: P[], big = false): Plate => ({ id: 'shell', k: 'shell', fib: [], lvl: 'n', pts, big })
-  sc.plates.push(
-    ...legs.flatMap((L) => [flat(region(L.thigh, 0.02, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(region(L.shin, 0.04, 0.97, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts)]),
-    flat(sym([[0, 19], [5.6, 20.4], [12, 19], [16.6, 13.2], [19.4, 6.4], [20, -0.4], [15, -3.2], [6.4, -3.4], [0, -1.2]]), true),
-    flat(sym([[0, 24], [5, 22.8], [9.6, 23.6], [9.4, 30], [7, 36.4], [3.4, 41.4], [0, 43.6]]), true),
-    flat(sym([[0, 40.4], [4, 38.4], [13, 37.8], [15.6, 43], [10.4, 50], [0, 55]]), true),
-    ...arms.flatMap((a) => [flat(region(a.ua, 0.1, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(region(a.fa, 0.04, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(ellipse(a.sh[0], a.sh[1] - 0.4, 7.8, 8.2), true)]),
-  )
-  const m = plateAdder(sc, o.levels, false)
-  const poly2 = (rel: P[], sd: number): P[] => rel.map((q) => R(sd * q[0], q[1]))
+  for (const sd of [-1, 1] as const) block(cx, { a: P(sd * 18.4, 0.5), b: P(sd * 18.4, 14.5), wa: 3.4, c: 1.1, mat: 'dark', n: N, sym: true })
+  // piernas
   for (const sd of [-1, 1] as const) {
-    const a = arms[sd < 0 ? 0 : 1], L = legs[sd < 0 ? 0 : 1]
-    if (!back) {
-      m('pec', { pts: poly2([[1.0, 6.5], [5.5, 5.4], [11, 5.6], [15.6, 8], [17, 12.5], [15.4, 18], [10.5, 21.5], [5.5, 21], [1.4, 17.5]], sd), fib: fan([R(sd * 1.5, 8), R(sd * 1.5, 11.5), R(sd * 1.5, 15), R(sd * 1.5, 18.5)], R(sd * 16.6, 11.4), 1.1) })
-      m('trap', { pts: poly2([[5.4, -7.5], [11, -2.6], [17.5, 1.2], [15, 4], [9.4, 5.2], [5.8, 2.2]], sd) })
-      for (let j = 0; j < 4; j++) {
-        const c = R(sd * (14.4 - 0.6 * j), 24 + 5 * j)
-        m('serr' + j, { pts: ellipse(c[0], c[1], 2.2 * S.kx(24 + 5 * j), 3.2, 0.3 * sd, 8) })
-      }
-      for (let j = 0; j < 4; j++) {
-        const y0 = 24 + 6 * j, x1 = 6.6 - 0.45 * j
-        m('rectus' + j, { pts: poly2([[1.2, y0], [x1 - 0.2, y0 + 0.4], [x1, y0 + 5.2], [1.2, y0 + 5.6]], sd) })
-      }
-      m('oblique', { pts: poly2([[7.4, 23], [12.6, 21], [13.6, 30], [13.8, 42], [11.6, 52], [7.6, 46], [8.6, 34]], sd), fib: [[R(sd * 8, 26), R(sd * 11, 34), R(sd * 11.6, 46)], [R(sd * 10, 24), R(sd * 12.4, 34), R(sd * 13, 44)]] })
-      m('dlat', region(a.ua, -0.1, 0.55, 0.15, 1, { pk: 0.4 }))
-      m('dant', region(a.ua, -0.1, 0.5, -0.95, 0.25, { pk: 0.4 }))
-      m('biceps', region(a.ua, 0.22, 0.85, -0.5, 0.55, { pk: 0.55 }))
-      m('brachrad', region(a.fa, 0.02, 0.55, 0.1, 0.95, { pk: 0.3 }))
-      m('fflex', region(a.fa, 0.02, 0.5, -0.9, 0.05, { pk: 0.3 }))
-      m('rfem', region(L.thigh, 0.1, 0.92, -0.35, 0.35, { pk: 0.5 }))
-      m('vlat', region(L.thigh, 0.2, 0.95, 0.3, 1.0, { pk: 0.5 }))
-      m('vmed', region(L.thigh, 0.62, 1.02, -1, -0.15, { pk: 0.78 }))
-      m('add', region(L.thigh, 0.05, 0.62, -1, -0.55, { pk: 0.4 }))
-      m('tib', region(L.shin, 0.08, 0.8, -0.7, 0.35, { pk: 0.4 }))
-      m('tfl', region(L.thigh, 0.0, 0.3, 0.45, 1.0, { pk: 0.4 }))
-      m('gmed', { pts: poly2([[13.2, 45], [16.6, 49], [15.8, 56], [12, 54]], sd) })
-    } else {
-      m('trap', { pts: poly2([[0, -8.5], [5.2, -6.5], [11, -2], [18, 1.8], [12, 5], [6, 3], [0, 2]], sd), fib: [[R(sd * 1, -6), R(sd * 6, 0), R(sd * 14, 1)]] })
-      m('trapM', { pts: poly2([[0, 3], [6.4, 3.6], [12, 5.4], [13, 10], [8, 20], [3.6, 32], [0, 38]], sd), fib: [[R(sd * 1, 4), R(sd * 6, 12), R(sd * 12, 6)], [R(sd * 1, 24), R(sd * 4, 18), R(sd * 11, 8)]] })
-      m('rhomb', { pts: poly2([[2.2, 12], [8.2, 9.6], [10.4, 19], [4, 23]], sd), fib: [[R(sd * 2.6, 14), R(sd * 6, 14.6), R(sd * 9, 12)]] })
-      m('teres', { pts: poly2([[11, 15], [16, 16], [16.4, 21], [12.4, 20.4]], sd) })
-      m('infra', { pts: poly2([[8, 6], [15.5, 7], [16.5, 13], [12, 17.5], [8.5, 14]], sd) })
-      m('lat', { pts: poly2([[14.8, 16], [15, 26], [12.6, 38], [7, 46], [1.6, 46], [2, 34], [6, 24], [10, 18]], sd), fib: [[R(sd * 2, 44), R(sd * 8, 30), R(sd * 15, 17)], [R(sd * 4, 42), R(sd * 10, 30), R(sd * 14.4, 22)]] })
-      m('erector', { pts: poly2([[1.2, 14], [4.8, 14], [5.2, 46], [1.2, 48]], sd) })
-      m('dpost', region(a.ua, -0.12, 0.5, -1, 0.5, { pk: 0.35 }))
-      m('triceps', region(a.ua, 0.12, 0.9, -0.6, 0.65, { pk: 0.5 }))
-      m('fext', region(a.fa, 0.02, 0.5, -0.8, 0.8, { pk: 0.3 }))
-      m('glute', { pts: poly2([[0.8, 44], [8, 41], [15.2, 46], [16, 56], [10, 62], [1, 60]], sd), fib: [[R(sd * 1, 56), R(sd * 8, 50), R(sd * 15, 46)]] })
-      m('gmed', { pts: poly2([[9, 38], [15.5, 41], [15.8, 46], [10, 46]], sd) })
-      m('ham', region(L.thigh, 0.2, 0.9, 0.05, 0.95, { pk: 0.45 }))
-      m('hamS', region(L.thigh, 0.2, 0.9, -0.95, -0.05, { pk: 0.45 }))
-      m('gastroc', region(L.shin, 0.04, 0.5, 0.0, 0.95, { pk: 0.3 }))
-      m('gastrocM', region(L.shin, 0.04, 0.5, -0.95, 0.0, { pk: 0.3 }))
-      m('soleus', region(L.shin, 0.38, 0.84, -0.7, 0.7, { pk: 0.5 }))
-    }
+    const hip = P(sd * 8.6, SEG.torso)
+    const seated = o.kneeX !== undefined
+    const knee: P = seated ? [mx + sd * o.kneeX!, o.hy + 3] : P(sd * 10.8, SEG.torso + SEG.thigh)
+    const ank: P = seated ? [mx + sd * (o.kneeX! + 2), CANVAS.floor - SEG.ankleHeight] : [mx + sd * 11.2, CANVAS.floor - SEG.ankleHeight]
+    const nT = nrm(unit(sub(knee, hip))), nS = nrm(unit(sub(ank, knee)))
+    const outerT = nT[0] * sd > 0, outerS = nS[0] * sd > 0
+    const zt = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerT ? [outer, centre, inner] : [inner, centre, outer])
+    const zs = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerS ? [outer, centre, inner] : [inner, centre, outer])
+    const fx = ank[0] + sd * 0.9, fy = ank[1]
+    block(cx, { a: [ank[0], fy - 0.2], b: [fx, fy - 3], wa: 5.2, wb: 6.6, c: 1.4, n: N, sym: true, k: 0.34 })
+    block(cx, { a: [fx, fy - 4.6], b: [fx, fy - 0.4], wa: 7.2, wb: 8.4, c: 1.9, n: N, sym: true, k: 0.34 })
+    block(cx, { a: [fx, fy - 0.6], b: [fx, fy + 0.3], wa: 8.6, c: 0.4, n: N, mat: 'dark', sym: true })
+    block(cx, { a: knee, b: ank, wa: 6.6, wb: 4.2, n: nS, sym: true, c: 2, zones: back ? zs(zn(L, ['gastroc']), zn(L, ['soleus']), zn(L, ['gastrocM'])) : zs(zn(L, ['tib']), zn(L, ['tib']), null) })
+    band(cx, ank, sub(ank, knee), 4.6, 2.2, true)
+    block(cx, {
+      prof: outerT ? [THF.out, THF.inn] : [THF.inn, THF.out], a: hip, b: knee, wa: 9.2, wb: 7, n: nT, sym: true, c: 2.2,
+      zones: back ? zt(zn(L, ['ham']), zn(L, ['ham', 'hamS']), zn(L, ['hamS'])) : zt(zn(L, ['vlat']), zn(L, ['rfem']), zn(L, ['vmed', 'add'])),
+    })
+    if (back) band(cx, knee, sub(ank, hip), 5.4, 4.2, true)
+    else kneecap(cx, knee, sub(ank, hip), 0, N)
   }
-  for (const L of legs) sc.plates.push(extra('foot', 'foot', L.foot))
-  for (const a of arms) sc.plates.push(extra('fist', 'fist', fistOf(a)))
-  sc.plates.push(extra('helmet', 'helmet', place([cx, hcy], [1, 0], [0, 1], S.HELMET_FR)))
-  if (!back) sc.plates.push(extra('mask', 'mask', place([cx, hcy], [1, 0], [0, 1], S.MASK_FR)))
+  // tronco
+  const gm = zn(L, ['gmed']), gl = zn(L, ['glute']), tf = zn(L, ['tfl', 'gmed'])
+  block(cx, { a: P(0, 51), b: P(0, 33), wa: 9.6, wb: 13.4, n: N, sym: true, c: 2.6, zones: back ? z3(gm, gl, gm) : z3(tf, null, tf) })
+  const obl = zn(L, ['oblique', 'serr', 'serr0', 'serr1', 'serr2', 'serr3']), er = zn(L, ['erector'])
+  block(cx, { a: P(0, 33.4), b: P(0, 23.4), wa: 7.8, wb: 8.8, n: N, sym: true, c: 1.6, zones: back ? z3(null, er, null) : z3(obl, zn(L, ['rectus', 'rectus0', 'rectus1']), obl) })
+  if (!back) block(cx, { a: P(0, 46.2), b: P(0, 34), wa: 6.6, wb: 7.8, n: N, sym: true, c: 1.8, zones: z3(obl, zn(L, ['rectus', 'rectus2', 'rectus3']), obl) })
+  // pecho: dos mitades separadas por un canal oscuro (frente, con franja exterior e interior); una pieza de dos zonas en la espalda
+  const pO = zn(L, ['pec']), pI = zn(L, ['pec', 'pecC'])
+  const sc2 = zn(L, ['trap', 'trapM', 'rhomb', 'teres', 'infra', 'lat'])
+  if (back) {
+    block(cx, { a: P(0, 23), b: P(0, -2), wa: 12.4, wb: 16.2, n: N, sym: true, c: 3, zones: [sc2, sc2], tn: [1, 1] })
+  } else {
+    block(cx, { a: P(0, 24), b: P(0, -3), wa: 1.7, c: 0.6, mat: 'dark', n: N, sym: true })
+    for (const sd of [-1, 1] as const) block(cx, { a: P(sd * 6.7, 23), b: P(sd * 8.6, -2), wa: 5.8, wb: 7.7, n: N, sym: true, c: 3, zones: sd < 0 ? [pO, pI] : [pI, pO], tn: sd < 0 ? [1, 0] : [0, 1] })
+  }
+  // cuello y casco liso (de frente, con dos ojos)
+  block(cx, { a: P(0, -3), b: P(0, -9), wa: 3.4, c: 0.9, mat: 'dark', n: N, sym: true })
+  block(cx, { a: P(0, -6), b: P(0, -(6 + HEAD)), wa: 8.2, c: 2.6, n: N, sym: true, k: 0.5 })
+  if (!back) for (const sd of [-1, 1]) cx.out.push(`<rect x="${(mx + sd * 3.6 - 1.3).toFixed(1)}" y="${(sy - 6 - HEAD * 0.62).toFixed(1)}" width="2.6" height="3.4" rx=".6" style="fill:var(--a-d2)"/>`)
+  // hombreras: bloque exterior sobre la articulación, sin pisar el pecho
+  const dz = zn(L, back ? ['dpost', 'dlat'] : ['dant', 'dlat'])
+  for (const a of arms) {
+    block(cx, { a: add(a.sh, [a.sd * 1, -11]), b: add(a.sh, [a.sd * 1.5, 5.5]), wa: 6, wb: 5.8, n: N, sym: true, c: 2.2, zones: [dz, dz, dz] })
+  }
+  if (!back) cx.out.push(`<rect x="${(mx - 3).toFixed(1)}" y="${(sy + 5).toFixed(1)}" width="6" height="5" fill="none" stroke-width=".6" stroke-opacity=".6" style="stroke:var(--a-edge)"/>`)
+  sc.body = cx.out
   return sc
 }
 
 /** Brazos simétricos en vista frontal: `theta` = ángulo del brazo respecto a la vertical, `th2` = del antebrazo (rad). */
 export const armsAt = (theta: number, th2: number) => (sy: number): FrontArm[] =>
   ([-1, 1] as const).map((sd) => {
-    const sh: P = [FRONT_CX + sd * ANDROID.shoulderHalf, sy + 2]
+    const sh: P = [FRONT_CX + sd * ANDROID.shoulderHalf, sy + 9]
     const el = add(sh, [sd * Math.sin(theta) * SEG.uarm, Math.cos(theta) * SEG.uarm])
     const hand = add(el, [sd * Math.sin(th2) * SEG.farm, Math.cos(th2) * SEG.farm])
     return { sd, sh, el, hand }
