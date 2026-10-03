@@ -28,6 +28,11 @@
   --blob-d: #4a5560;
   --blob-hot: #ffb000;
   --blob-op: 0.85;
+  /* Androide (placas biseladas): acero frío y ámbar sobre los músculos trabajados */
+  --a-inner: #0d1217; --a-inner-rim: rgb(160 176 190 / 0.55); --a-cable: #2b353f; --a-cable-hi: rgb(170 186 200 / 0.22);
+  --a-m0: #f2f7fa; --a-m1: #b3c0cb; --a-m2: #74828f; --a-m3: #313b45; --a-line: rgb(0 0 0 / 0.6); --a-spec: rgb(255 255 255 / 0.55);
+  --a-amb-rim: #fff3d0; --a-amb-hi: #ffc53d; --a-amb-mid: #ffb000; --a-amb-lo: #8c4f00; --a-glow: rgb(255 176 0 / 0.55);
+  --a-pad: #39424a; --a-pad-hi: #566370; --a-guide: rgb(238 242 244 / 0.5); --a-shadow: rgb(0 0 0 / 0.55);
 }
 
 @media (prefers-color-scheme: light) {
@@ -49,6 +54,10 @@
     --blob-c: #ffffff;
     --blob-d: #c9d1d7;
     --blob-op: 0.8;
+    --a-inner: #1a2128; --a-inner-rim: rgb(20 28 36 / 0.55); --a-cable: #3a4651; --a-cable-hi: rgb(210 222 232 / 0.25);
+    --a-m0: #ffffff; --a-m1: #e1e8ed; --a-m2: #a9b6c1; --a-m3: #5b6873; --a-line: rgb(8 12 16 / 0.55); --a-spec: rgb(255 255 255 / 0.9);
+    --a-amb-mid: #f5a300; --a-glow: rgb(255 176 0 / 0.5);
+    --a-pad: #aab5be; --a-pad-hi: #d2dae0; --a-guide: rgb(11 15 20 / 0.5); --a-shadow: rgb(11 15 20 / 0.3);
   }
 }
 

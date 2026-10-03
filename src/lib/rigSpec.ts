@@ -84,3 +84,6 @@ export const SPECIAL = {
   /** Sentadilla: la cadera baja lo que sube el pie en el recorrido relativo from→to. */
   squat: { hipDropsByFootRise: true },
 } as const
+
+/** Androide (vistas frontal/posterior): semiancho entre ejes de hombro, cuello visible y centro de la cabeza sobre el hombro. */
+export const ANDROID = { shoulderHalf: 21, neck: 14, headCenter: 19.5 } as const

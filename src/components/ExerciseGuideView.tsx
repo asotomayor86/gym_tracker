@@ -12,7 +12,7 @@ const IMPLEMENT: Record<Implement, string> = {
   maquina: 'Máquina', polea: 'Polea', multipower: 'Multipower', 'peso-corporal': 'Peso corporal',
 }
 const LEVEL: Record<Difficulty, string> = { 1: 'Principiante', 2: 'Intermedio', 3: 'Avanzado' }
-const LOWER: MuscleGroup[] = ['cuadriceps', 'isquios', 'gluteo', 'gemelo']
+const LOWER: MuscleGroup[] = ['cuadriceps', 'isquios', 'gluteo', 'gemelo', 'aductores']
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -62,8 +62,8 @@ export default function ExerciseGuideView({ exercise }: { exercise: Pick<Exercis
       </header>
 
       <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <BodyMap primary={guide.primary} secondary={guide.secondary} />
-        <ExerciseDiagram diagram={{ ...guide.diagram, limb }} primary={guide.primary} secondary={guide.secondary} steps={guide.steps} tempo={guide.tempo} tempoNote={guide.tempoNote} />
+        <BodyMap primary={guide.primary} secondary={guide.secondary} muscleIds={guide.muscleIds} />
+        <ExerciseDiagram diagram={{ ...guide.diagram, limb }} primary={guide.primary} secondary={guide.secondary} muscleIds={guide.muscleIds} steps={guide.steps} tempo={guide.tempo} tempoNote={guide.tempoNote} />
       </div>
 
       <Block title="Posición inicial"><Bullets items={guide.setup} mark="▸" /></Block>
