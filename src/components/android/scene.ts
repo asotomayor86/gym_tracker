@@ -12,7 +12,7 @@ import * as S from './shapes'
  */
 export type Lvl = 'p' | 's' | 'n'
 export type PlateKind = 'shell' | 'plate' | 'helmet' | 'mask' | 'visor' | 'fist' | 'foot'
-export interface Plate { id: string; k: PlateKind; pts: P[]; fib: P[][]; lvl: Lvl }
+export interface Plate { id: string; k: PlateKind; pts: P[]; fib: P[][]; lvl: Lvl; /** placa grande: lleva bisel interior y brillo */ big?: boolean }
 export interface Scene {
   /** viewBox: x, y, w, h */
   box: [number, number, number, number]
@@ -133,14 +133,14 @@ export function buildSide(o: SideIn): Scene {
   const hd = unit([o.armEnd[0] - o.armMid[0], o.armEnd[1] - o.armMid[1]])
   const foot = place(ankle, f0, sole, S.FOOT_P), fist = place(o.armEnd, hd, farm.f, S.FIST_P), helmet = place(hc, neck.f, up, S.HELMET_P)
   sc.masses.push(foot, fist, place(o.armEnd, hd, farm.f, S.THUMB_P), helmet,
-    ellipse(shoulder[0], shoulder[1], S.SHOULDER.rx, S.SHOULDER.ry), ellipse(o.armMid[0], o.armMid[1], 4.2, 4.2), ellipse(hip[0], hip[1], S.HIP.rx, S.HIP.ry), ellipse(knee[0], knee[1], 5.6, 5.6))
-  sc.joints.push({ p: shoulder, r: 6.8 }, { p: o.armMid, r: 5 }, { p: hip, r: 7.2 }, { p: knee, r: 6.2 }, { p: o.armEnd, r: 2 }, { p: ankle, r: 2.4 })
+    ellipse(shoulder[0], shoulder[1], S.SHOULDER.rx, S.SHOULDER.ry), ellipse(o.armMid[0], o.armMid[1], 3.8, 3.8), ellipse(hip[0], hip[1], S.HIP.rx, S.HIP.ry), ellipse(knee[0], knee[1], 5, 5))
+  sc.joints.push({ p: shoulder, r: 5 }, { p: o.armMid, r: 4 }, { p: hip, r: 5.6 }, { p: knee, r: 5 })
   // carcasa: pocas placas grandes (pelvis, abdomen, pecho, hombrera, brazo, antebrazo, muslo, gemelo) sobre la capa interior
   sc.plates.push(
     shellOf(thigh, 0.02, 0.98, 0.14), shellOf(shin, 0.04, 0.97, 0.14),
-    shellOf(torso, -0.32, 0.1, 0.3), shellOf(torso, 0.13, 0.5, 0.2), shellOf(torso, 0.53, 1.08, 0.2),
+    { ...shellOf(torso, -0.32, 0.1, 0.3), big: true }, { ...shellOf(torso, 0.13, 0.5, 0.2), big: true }, { ...shellOf(torso, 0.53, 1.08, 0.2), big: true },
     shellOf(uarm, 0.12, 0.97, 0.14), shellOf(farm, 0.06, 0.97, 0.14),
-    { id: 'shell', k: 'shell', fib: [], lvl: 'n', pts: ellipse(shoulder[0], shoulder[1], 9.6, 10) },
+    { id: 'shell', k: 'shell', fib: [], lvl: 'n', big: true, pts: ellipse(shoulder[0], shoulder[1], 7.4, 7.8) },
   )
   const m = plateAdder(sc, o.levels, true)
   const t = torso, u = uarm, fa = farm, th = thigh, sh = shin
@@ -213,32 +213,29 @@ export function buildFront(o: FrontIn): Scene {
     const d = unit([a.hand[0] - a.el[0], a.hand[1] - a.el[1]])
     return place(a.hand, d, [-d[1], d[0]], S.FIST_P.map((q): P => [q[0], q[1] * a.sd]))
   }
-  for (const a of arms) sc.masses.push(ellipse(a.sh[0], a.sh[1], S.SHOULDER.rx + 0.4, S.SHOULDER.ry + 0.4), a.ua.outline, a.fa.outline, ellipse(a.el[0], a.el[1], 4.2, 4.2), fistOf(a))
+  for (const a of arms) sc.masses.push(ellipse(a.sh[0], a.sh[1], S.SHOULDER.rx + 0.4, S.SHOULDER.ry + 0.4), a.ua.outline, a.fa.outline, ellipse(a.el[0], a.el[1], 3.8, 3.8), fistOf(a))
   const kneeX = o.kneeX
   const legs = ([-1, 1] as const).map((sd) => {
     const hipP: P = [cx + sd * S.HIP.x, hy]
-    const kneeP: P = kneeX === undefined ? [cx + sd * 14, hy + SEG.thigh * 0.995] : [cx + sd * kneeX, hy + 3]
-    const ankP: P = kneeX === undefined ? [cx + sd * 13.4, ankleY] : [cx + sd * (kneeX + 2), ankleY]
+    const kneeP: P = kneeX === undefined ? [cx + sd * 12.6, hy + SEG.thigh * 0.995] : [cx + sd * kneeX, hy + 3]
+    const ankP: P = kneeX === undefined ? [cx + sd * 12, ankleY] : [cx + sd * (kneeX + 2), ankleY]
     const L = { sd, thigh: seg(hipP, kneeP, S.NP.thighFr, sd), shin: seg(kneeP, ankP, S.NP.shinFr, sd), hipP, kneeP, ankP }
     const ax = ankP[0], fy = CANVAS.floor
-    const foot: P[] = [[ax - 5.2, ankP[1] - 1], [ax + 5.2, ankP[1] - 1], [ax + 8, fy - 4], [ax + 9.6 * sd + 0.8, fy], [ax - 9.6 * sd - 0.8, fy], [ax - 8, fy - 4]]
-    sc.masses.push(L.thigh.outline, L.shin.outline, ellipse(hipP[0], hipP[1], S.HIP.rx, S.HIP.ry), ellipse(kneeP[0], kneeP[1], 5.6, 5.8), foot)
+    const foot: P[] = [[ax - 4.4, ankP[1] - 1], [ax + 4.4, ankP[1] - 1], [ax + 6.6, fy - 4], [ax + 8 * sd + 0.6, fy], [ax - 8 * sd - 0.6, fy], [ax - 6.6, fy - 4]]
+    sc.masses.push(L.thigh.outline, L.shin.outline, ellipse(hipP[0], hipP[1], S.HIP.rx, S.HIP.ry), ellipse(kneeP[0], kneeP[1], 5, 5.2), foot)
     return { ...L, foot }
   })
-  for (const a of arms) sc.joints.push({ p: a.sh, r: 7.2 }, { p: a.el, r: 5 }, { p: a.hand, r: 2 })
-  if (!back) sc.joints.push({ p: at(-4, 21.4), r: 3 }, { p: at(4, 21.4), r: 3 })
-  for (const L of legs) sc.joints.push({ p: L.hipP, r: 7.2 }, { p: L.kneeP, r: 6.2 }, { p: L.ankP, r: 2.4 })
+  for (const a of arms) sc.joints.push({ p: a.sh, r: 5 }, { p: a.el, r: 4 })
+  for (const L of legs) sc.joints.push({ p: L.hipP, r: 5.6 }, { p: L.kneeP, r: 5 })
   // carcasa: pecho en dos lóbulos, abdomen en V, pelvis en V, hombreras y segmentos largos
-  const flat = (pts: P[]): Plate => ({ id: 'shell', k: 'shell', fib: [], lvl: 'n', pts })
+  const flat = (pts: P[], big = false): Plate => ({ id: 'shell', k: 'shell', fib: [], lvl: 'n', pts, big })
   sc.plates.push(
     ...legs.flatMap((L) => [flat(region(L.thigh, 0.02, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(region(L.shin, 0.04, 0.97, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts)]),
-    flat(sym([[0, 19.4], [6, 21], [13.6, 19.6], [19, 13.6], [22.6, 6.4], [23.6, -0.6], [17, -3.4], [7, -3.6], [0, -1]])),
-    flat(sym([[0, 24.6], [6, 23.2], [11.6, 24], [11.4, 31], [8.6, 37.6], [4, 43], [0, 45.6]])),
-    flat(sym([[0, 41.6], [5, 38.6], [15.6, 37.4], [18, 43], [12.8, 50.6], [0, 56]])),
-    ...arms.flatMap((a) => [flat(region(a.ua, 0.1, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(region(a.fa, 0.04, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(ellipse(a.sh[0], a.sh[1] - 0.6, 10.4, 10.6))]),
+    flat(sym([[0, 19], [5.6, 20.4], [12, 19], [16.6, 13.2], [19.4, 6.4], [20, -0.4], [15, -3.2], [6.4, -3.4], [0, -1.2]]), true),
+    flat(sym([[0, 24], [5, 22.8], [9.6, 23.6], [9.4, 30], [7, 36.4], [3.4, 41.4], [0, 43.6]]), true),
+    flat(sym([[0, 40.4], [4, 38.4], [13, 37.8], [15.6, 43], [10.4, 50], [0, 55]]), true),
+    ...arms.flatMap((a) => [flat(region(a.ua, 0.1, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(region(a.fa, 0.04, 0.98, -0.97, 0.97, { pk: 0.5, pw: 0.14 }).pts), flat(ellipse(a.sh[0], a.sh[1] - 0.4, 7.8, 8.2), true)]),
   )
-  if (!back) sc.lines.push([at(0, 0), at(0, 44)])
-  else sc.lines.push([at(0, -6), at(0, 52)])
   const m = plateAdder(sc, o.levels, false)
   const poly2 = (rel: P[], sd: number): P[] => rel.map((q) => R(sd * q[0], q[1]))
   for (const sd of [-1, 1] as const) {

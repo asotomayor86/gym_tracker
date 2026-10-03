@@ -56,8 +56,10 @@ export function renderAndroid(s: Scene, o: RenderOpts): string {
     const w = p.lvl === 'p', se = p.lvl === 's', dark = p.k === 'mask'
     const g1 = w ? 'a' : dark ? 'k' : 's', g2 = w ? 'ai' : dark ? 'ki' : 'si'
     into.push(`<path d="${d}" fill="url(#${id}-${g1})" stroke-width=".6" stroke-linejoin="round" style="stroke:${v('line')}"/>`)
-    into.push(`<path d="${di}" fill="url(#${id}-${g2})"/>`)
-    if (!lite && p.k !== 'mask') into.push(`<path d="${di}" fill="url(#${id}-h)"/>`)
+    // el bisel interior y el brillo solo en placas grandes, músculos y casco; los segmentos largos van lisos
+    const bevel = p.big || p.k !== 'shell'
+    if (bevel) into.push(`<path d="${di}" fill="url(#${id}-${g2})"/>`)
+    if (!lite && bevel && p.k !== 'mask') into.push(`<path d="${di}" fill="url(#${id}-h)"/>`)
     if (w) into.push(`<path d="${di}" fill-opacity="${(0.55 * hot).toFixed(2)}" style="fill:${v('amb-rim')}"/>`)
     if (se) into.push(`<path d="${d}" fill="none" stroke-width="1.5" stroke-linejoin="round" opacity=".9" style="stroke:${v('amb-hi')}"/><path d="${di}" opacity=".22" style="fill:${v('amb-mid')}"/>`)
     if (p.k === 'plate' && (w || se)) for (const l of p.fib) into.push(`<path d="${openPath(l)}" fill="none" stroke-opacity=".4" stroke-width=".4" style="stroke:${v('amb-rim')}"/>`)

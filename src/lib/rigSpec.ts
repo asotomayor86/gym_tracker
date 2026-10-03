@@ -86,4 +86,4 @@ export const SPECIAL = {
 } as const
 
 /** Androide (vistas frontal/posterior): semiancho entre ejes de hombro, cuello visible y centro de la cabeza sobre el hombro. */
-export const ANDROID = { shoulderHalf: 21, neck: 9, headCenter: 21.5 } as const
+export const ANDROID = { shoulderHalf: 18.5, neck: 9, headCenter: 21.5 } as const
