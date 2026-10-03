@@ -1,7 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
+import { reorderTemplateExercises } from '../lib/order'
 import { usePrefs } from '../lib/prefs'
 import { fromKg, roundTo, toKg } from '../lib/units'
 
@@ -17,8 +20,18 @@ export default function TemplateEditPage() {
     [id],
   )
   const exercises = useLiveQuery(() => db.exercises.filter(alive).toArray())
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null)
   if (!template || !rows || !exercises) return null
   const byId = new Map(exercises.map((e) => [e.id, e]))
+  // orden de alta (position); mientras se guarda un arrastre se muestra el orden nuevo sin parpadeo
+  const ids = rows.map((r) => r.id)
+  const shownIds = localOrder && localOrder.length === ids.length && localOrder.every((x) => ids.includes(x)) ? localOrder : ids
+  const shown = shownIds.map((rid) => rows.find((r) => r.id === rid)!)
+  const reorder = async (next: string[]) => {
+    setLocalOrder(next)
+    await reorderTemplateExercises(template.id, next)
+    requestAnimationFrame(() => setLocalOrder(null))
+  }
 
   const addExercise = async (exerciseId: string) => {
     if (!exerciseId) return
@@ -28,11 +41,12 @@ export default function TemplateEditPage() {
     })
   }
 
-  const move = async (index: number, dir: -1 | 1) => {
-    const other = rows[index + dir]
-    if (!other) return
-    await save('templateExercises', { ...rows[index], position: other.position })
-    await save('templateExercises', { ...other, position: rows[index].position })
+  const move = (index: number, dir: -1 | 1) => {
+    const j = index + dir
+    if (j < 0 || j >= shownIds.length) return
+    const next = [...shownIds]
+    ;[next[index], next[j]] = [next[j], next[index]]
+    void reorder(next)
   }
 
   return (
@@ -61,18 +75,21 @@ export default function TemplateEditPage() {
         className={`${inputCls} display !text-xl !min-h-14`}
         onCommit={(v) => save('workoutTemplates', { ...template, name: v.trim() || template.name })}
       />
-      {rows.map((r, i) => {
+      <SortableList ids={shownIds} onReorder={reorder}>
+      {shown.map((r, i) => {
         const ex = byId.get(r.exerciseId)
         const update = (patch: Partial<typeof r>) => save('templateExercises', { ...r, ...patch })
+        const name = ex?.name ?? 'Ejercicio eliminado'
         return (
-          <div key={r.id} className="glass space-y-3 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="display text-base leading-snug">{ex?.name ?? 'Ejercicio eliminado'}</div>
-              <div className="flex gap-1">
-                <Button variant="ghost" className="px-3" onClick={() => move(i, -1)} disabled={i === 0}>↑</Button>
-                <Button variant="ghost" className="px-3" onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</Button>
-                <Button variant="danger" className="px-3" onClick={() => remove('templateExercises', r.id)}>✕</Button>
-              </div>
+          <SortableItem key={r.id} id={r.id}>
+          {({ handle }) => (
+          <div className="glass mb-5 space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <DragHandle handle={handle} label={name} />
+              <span className="num text-xs text-signal-text">{String(i + 1).padStart(2, '0')}</span>
+              <div className="display min-w-0 flex-1 text-base leading-snug">{name}</div>
+              <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
+              <Button variant="danger" className="!min-h-9 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
             </div>
             <div className="eyebrow grid grid-cols-4 gap-3 [&_input]:num [&_input]:mt-1 [&_input]:text-center [&_input]:text-lg [&_input]:normal-case [&_input]:tracking-normal [&_input]:text-ink">
               <label>Series<CommitInput type="number" inputMode="numeric" value={r.targetSets} onCommit={(v) => update({ targetSets: Math.max(1, Math.round(num(v, r.targetSets))) })} /></label>
@@ -81,8 +98,11 @@ export default function TemplateEditPage() {
               <label>Desc. (s)<CommitInput type="number" inputMode="numeric" value={r.restS} onCommit={(v) => update({ restS: Math.max(0, Math.round(num(v, r.restS))) })} /></label>
             </div>
           </div>
+          )}
+          </SortableItem>
         )
       })}
+      </SortableList>
       <select className={inputCls} value="" onChange={(e) => addExercise(e.target.value)}>
         <option value="">+ Añadir ejercicio…</option>
         {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map((e) => (

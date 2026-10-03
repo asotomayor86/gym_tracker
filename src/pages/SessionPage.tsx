@@ -2,8 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { GuideToggle } from '../components/ExerciseGuideView'
+import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
+import { addSetToSession, reorderSessionExercises, sessionExerciseIds } from '../lib/order'
 import { fmtDate } from '../lib/labels'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { suggestNext } from '../lib/progression'
@@ -11,11 +13,15 @@ import { isDone, lastSessionSets } from '../lib/stats'
 import { EFFORT_LABELS, type Effort, type SetLog } from '../lib/types'
 import { formatWeight, fromKg, roundTo, toKg } from '../lib/units'
 
+/** Icono por esfuerzo: la información no depende solo del color (daltonismo). */
+const EFFORT_ICON: Record<Effort, string> = { easy_done: '✓', hard_done: '●', failed_close: '▲', failed: '✕' }
+const EFFORT_DOT: Record<Effort, string> = { easy_done: 'bg-e-easy', hard_done: 'bg-e-hard', failed_close: 'bg-e-close', failed: 'bg-e-fail' }
+
 const EFFORT_STYLE: Record<Effort, string> = {
-  easy_done: 'bg-e-easy text-e-easy-ink',
+  easy_done: 'bg-e-easy text-e-easy-ink shadow-[0_0_18px_rgb(52_199_123/0.4)]',
   hard_done: 'bg-e-hard text-on-signal shadow-[0_0_20px_rgb(255_176_0/0.45)]',
-  failed_close: 'bg-e-close text-on-signal',
-  failed: 'bg-e-fail text-on-signal',
+  failed_close: 'bg-e-close text-on-signal shadow-[0_0_18px_rgb(255_122_26/0.4)]',
+  failed: 'bg-e-fail text-on-signal shadow-[0_0_18px_rgb(255_90_54/0.4)]',
 }
 const EFFORTS = Object.keys(EFFORT_LABELS) as Effort[]
 
@@ -24,6 +30,7 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { unit, incrementKg } = usePrefs()
   const [restUntil, setRestUntil] = useState<number | null>(null)
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null)
 
   const session = useLiveQuery(() => db.sessions.get(id!), [id])
   const logs = useLiveQuery(() => db.setLogs.where('sessionId').equals(id!).filter(alive).toArray(), [id])
@@ -37,10 +44,21 @@ export default function SessionPage() {
 
   const exById = new Map(exercises.map((e) => [e.id, e]))
   const exName = (eid: string) => exercises.find((e) => e.id === eid)?.name ?? 'Ejercicio'
-  const position = (eid: string) => items.find((i) => i.exerciseId === eid)?.position ?? 1000
-  const groups = [...new Set(logs.map((l) => l.exerciseId))].sort(
-    (a, b) => position(a) - position(b) || exName(a).localeCompare(exName(b)),
-  )
+  // orden de alta (exerciseOrder); mientras se guarda un arrastre se muestra el orden nuevo sin parpadeo
+  const stored = sessionExerciseIds(logs)
+  const groups = localOrder && localOrder.length === stored.length && localOrder.every((x) => stored.includes(x)) ? localOrder : stored
+  const reorder = async (next: string[]) => {
+    setLocalOrder(next)
+    await reorderSessionExercises(session.id, next)
+    requestAnimationFrame(() => setLocalOrder(null))
+  }
+  const move = (eid: string, dir: -1 | 1) => {
+    const i = groups.indexOf(eid), j = i + dir
+    if (j < 0 || j >= groups.length) return
+    const next = [...groups]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    void reorder(next)
+  }
   const finished = !!session.endedAt
 
   const patchLog = (l: SetLog, patch: Partial<SetLog>) => save('setLogs', { ...l, ...patch })
@@ -52,16 +70,7 @@ export default function SessionPage() {
     if (rest > 0) setRestUntil(Date.now() + rest * 1000)
   }
 
-  const addSet = (eid: string) => {
-    const mine = logs.filter((l) => l.exerciseId === eid).sort((a, b) => a.setIndex - b.setIndex)
-    const last = mine[mine.length - 1]
-    return save('setLogs', {
-      sessionId: session.id, exerciseId: eid, setIndex: (last?.setIndex ?? -1) + 1,
-      reps: last?.reps ?? 10, weightKg: last?.weightKg ?? 20,
-      inputUnit: unit, inputWeight: roundTo(fromKg(last?.weightKg ?? 20, unit), 0.5),
-      effort: null, completedAt: null,
-    })
-  }
+  const addSet = (eid: string) => addSetToSession(session.id, eid, unit)
 
   const finish = async () => {
     for (const l of logs) if (!isDone(l)) await remove('setLogs', l.id)
@@ -90,14 +99,19 @@ export default function SessionPage() {
         </div>
       }
     >
+      <SortableList ids={groups} onReorder={reorder}>
       {groups.map((eid, gi) => {
         const sets = logs.filter((l) => l.exerciseId === eid).sort((a, b) => a.setIndex - b.setIndex)
         const sug = suggestNext(lastSessionSets(allLogs, eid, session.id), { incrementKg })
         return (
-          <section key={eid}>
-            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <SortableItem key={eid} id={eid}>
+          {({ handle }) => (
+          <section className="mb-7">
+            <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
+              {!finished && <DragHandle handle={handle} label={exName(eid)} />}
               <span className="num text-xs text-signal-text">{String(gi + 1).padStart(2, '0')}</span>
               <h2 className="display min-w-0 flex-1 text-xl leading-snug">{exName(eid)}</h2>
+              {!finished && groups.length > 1 && <MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} />}
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
             {sug && (
@@ -138,10 +152,12 @@ export default function SessionPage() {
                     <button
                       key={e}
                       onClick={() => setEffort(l, e)}
-                      className={`press min-h-11 rounded-xl text-xs font-semibold transition-colors ${
+                      aria-pressed={l.effort === e}
+                      className={`press flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-colors ${
                         l.effort === e ? EFFORT_STYLE[e] : 'bg-ink/5 text-mute hover:text-ink'
                       }`}
                     >
+                      <span aria-hidden className={l.effort === e ? 'text-sm leading-none' : `grid size-4 place-items-center rounded-full text-[0.62rem] leading-none text-e-easy-ink ${EFFORT_DOT[e]}`}>{EFFORT_ICON[e]}</span>
                       {EFFORT_LABELS[e]}
                     </button>
                   ))}
@@ -150,8 +166,11 @@ export default function SessionPage() {
             ))}
             <Button variant="ghost" className="w-full" onClick={() => addSet(eid)}>+ Serie</Button>
           </section>
+          )}
+          </SortableItem>
         )
       })}
+      </SortableList>
 
       <select
         className={inputCls}

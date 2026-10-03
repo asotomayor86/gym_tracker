@@ -17,10 +17,10 @@
   --signal-text: #ffb000;
   --on-signal: #1a1100;
   --cold: #8fa3b3;
-  --e-easy: #39424a;
-  --e-easy-ink: #eef2f4;
+  --e-easy: #34c77b;
+  --e-easy-ink: #06130c;
   --e-hard: #ffb000;
-  --e-close: #8a949d;
+  --e-close: #ff7a1a;
   --e-fail: #ff5a36;
   --blob-a: #8a949d;
   --blob-b: #2a3138;
@@ -45,8 +45,9 @@
     --glass-flat: rgb(255 255 255 / 0.86);
     --signal-text: #8a5a00;
     --cold: #4f6577;
-    --e-easy: #cbd3d9;
-    --e-easy-ink: #0b0f14;
+    --e-easy: #2fbf73;
+    --e-easy-ink: #06130c;
+    --e-close: #f26b0a;
     --e-fail: #f0502c;
     --blob-a: #b8c2ca;
     --blob-b: #9aa6af;
@@ -180,3 +181,6 @@ select option { color: #0b0f14; background: #fff; }
   .live-bg i, .heat, .heat-fill, .pulse-ring, .rise > *, .sheet-in, .sheet-fade { animation: none !important; }
   .fold, .fold > div, .press { transition: none !important; }
 }
+
+/* Arrastre de ejercicios: la fila levantada se eleva y se inclina un poco */
+.drag-lift > * { box-shadow: 0 14px 34px rgb(0 0 0 / 0.4); outline: 2px solid var(--signal); outline-offset: -2px; border-radius: 20px; }
