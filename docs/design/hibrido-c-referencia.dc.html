@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>C · Híbrido térmico acero</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h-blob{position:absolute;border-radius:50%;filter:blur(46px);opacity:.85}
+.h-b1{width:300px;height:300px;left:-60px;top:80px;background:radial-gradient(circle,#8A949D,#2A3138 60%,transparent 72%);animation:h-f1 14s ease-in-out infinite alternate}
+.h-b2{width:260px;height:260px;right:-70px;top:360px;background:radial-gradient(circle,#D9E0E4,#4A5560 55%,transparent 72%);opacity:.6;animation:h-f2 17s ease-in-out infinite alternate}
+.h-b3{width:340px;height:340px;left:20px;bottom:-120px;background:radial-gradient(circle,#5A6672,#1D2329 60%,transparent 74%);animation:h-f3 20s ease-in-out infinite alternate}
+.h-b4{width:120px;height:120px;right:50px;top:130px;background:radial-gradient(circle,#FFB000,transparent 70%);opacity:.55;animation:h-f4 11s ease-in-out infinite alternate}
+@keyframes h-f1{to{transform:translate(120px,160px) scale(1.25)}}
+@keyframes h-f2{to{transform:translate(-150px,-120px) scale(.8)}}
+@keyframes h-f3{to{transform:translate(160px,-90px) scale(1.2)}}
+@keyframes h-f4{to{transform:translate(-170px,260px) scale(1.5)}}
+.h-glass{background:rgba(7,9,12,.58);border:1px solid rgba(238,242,244,.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:20px}
+.h-heat{background:linear-gradient(100deg,#7B8791,#E6EBEE,#FFB000,#FFE08A,#FFB000,#E6EBEE,#7B8791);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:h-shift 9s linear infinite}
+@keyframes h-shift{to{background-position:300% 0}}
+.h-pulse{position:absolute;inset:0;border-radius:50%;border:2px solid #FFB000;animation:h-pulse 2.8s ease-out infinite}
+@keyframes h-pulse{0%{transform:scale(.55);opacity:.8}100%{transform:scale(1.7);opacity:0}}
+.h-btn{cursor:pointer;transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .2s}
+.h-btn:hover{transform:scale(1.04);box-shadow:0 0 28px rgba(255,176,0,.5)}
+.h-btn:active{transform:scale(.96)}
+.h-fold{display:grid;transition:grid-template-rows .6s cubic-bezier(.2,.8,.2,1)}
+.h-fold-in{overflow:hidden;min-height:0;transition:opacity .5s,filter .5s,transform .5s}
+.h-bar{transform-origin:left;animation:h-bar 1.6s .2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes h-bar{from{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.h-b1,.h-b2,.h-b3,.h-b4,.h-heat,.h-pulse,.h-bar{animation:none!important}}
+</style>
+</helmet>
+
+<div style="width:940px;height:960px;box-sizing:border-box;padding:36px 50px;background:#0B0C10;color:#EEF2F4;font-family:'Instrument Sans',sans-serif;display:flex;flex-direction:column;gap:22px">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+    <div>
+      <div style="font-size:11px;letter-spacing:.2em;color:#FFB000;font-weight:600">DIRECCIÓN C · HÍBRIDO</div>
+      <h2 class="h-heat" style="margin:6px 0 0;font-family:'Unbounded',sans-serif;font-size:32px;font-weight:800">CÁMARA TÉRMICA · ACERO</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:#9aa6ae;max-width:470px;line-height:1.45">La forma de la C original (cristal redondeado, pastillas, Unbounded, fondo líquido) con la paleta FLIR: grises de acero y un único ámbar para lo que arde.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="width:34px;height:34px;border-radius:50%;background:#05070A;border:1px solid #39424A"></span>
+      <span style="width:34px;height:34px;border-radius:50%;background:#2A3138"></span>
+      <span style="width:34px;height:34px;border-radius:50%;background:#8A949D"></span>
+      <span style="width:34px;height:34px;border-radius:50%;background:#EEF2F4"></span>
+      <span style="width:34px;height:34px;border-radius:50%;background:#FFB000"></span>
+      <span style="font-size:11px;color:#9aa6ae;margin-left:8px;line-height:1.5">Unbounded<br>Instrument Sans</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:40px">
+
+    <!-- HOY -->
+    <div style="position:relative;width:390px;height:780px;overflow:hidden;border-radius:34px;background:#05070A;flex:none;border:1px solid #2A3138">
+      <div class="h-blob h-b1"></div><div class="h-blob h-b2"></div><div class="h-blob h-b3"></div><div class="h-blob h-b4"></div>
+      <div style="position:relative;padding:24px 22px 0;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#C3CBD1;font-weight:500"><span>Sáb 3 oct</span><span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#FFB000;box-shadow:0 0 10px #FFB000"></span>sync</span></div>
+        <h1 class="h-heat" style="margin:8px 0 0;font-family:'Unbounded',sans-serif;font-size:88px;line-height:.9;font-weight:800;letter-spacing:-.03em">HOY</h1>
+
+        <div class="h-glass" style="padding:16px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;min-width:0"><div style="font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;line-height:1.2">Día A<br><span style="font-weight:500;color:#C3CBD1">Piernas + hombros</span></div><div style="font-size:12px;color:#8E9AA3;margin-top:5px">9 ejercicios · ~55 min</div></div>
+          <div class="h-btn" style="background:linear-gradient(120deg,#FFB000,#FFC53D);color:#1A1100;font-weight:600;font-size:14px;padding:12px 18px;border-radius:999px">Empezar</div>
+        </div>
+        <div class="h-glass" style="padding:16px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;min-width:0"><div style="font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;line-height:1.2">Día B<br><span style="font-weight:500;color:#C3CBD1">Pecho + brazos</span></div><div style="font-size:12px;color:#8E9AA3;margin-top:5px">9 ejercicios · ~50 min</div></div>
+          <div class="h-btn" style="background:linear-gradient(120deg,#FFB000,#FFC53D);color:#1A1100;font-weight:600;font-size:14px;padding:12px 18px;border-radius:999px">Empezar</div>
+        </div>
+
+        <div class="h-glass" style="padding:16px 16px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em">MAPA DE CALOR</span><span style="font-size:11px;color:#8E9AA3">últimos 30 días</span></div>
+          <div style="display:flex;flex-direction:column;gap:11px;font-size:13px">
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Piernas</span><span style="color:#FFB000;font-weight:600">hoy</span></div><div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div class="h-bar" style="height:100%;width:92%;border-radius:99px;background:linear-gradient(90deg,#2A3138,#7B8791,#E6EBEE,#FFB000)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Pecho</span><span style="color:#8FA3B3;font-weight:600">12 d · frío</span></div><div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div class="h-bar" style="height:100%;width:24%;border-radius:99px;background:linear-gradient(90deg,#2A3138,#7B8791)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Espalda</span><span style="color:#8FA3B3;font-weight:600">9 d · frío</span></div><div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div class="h-bar" style="height:100%;width:38%;border-radius:99px;background:linear-gradient(90deg,#2A3138,#7B8791,#C3CBD1)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Hombro</span><span style="color:#FFC53D;font-weight:600">5 d</span></div><div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div class="h-bar" style="height:100%;width:61%;border-radius:99px;background:linear-gradient(90deg,#2A3138,#7B8791,#E6EBEE,#FFC53D)"></div></div></div>
+          </div>
+        </div>
+
+        <div class="h-glass" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div style="display:flex;justify-content:space-between"><span><b style="font-weight:600">Día B</b> · Pecho + brazos</span><span style="color:#8E9AA3">vie · 27 series</span></div>
+          <div style="display:flex;justify-content:space-between"><span><b style="font-weight:600">Día A</b> · Piernas + hombros</span><span style="color:#8E9AA3">mié · 27 series</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESIÓN -->
+    <div style="position:relative;width:390px;height:780px;overflow:hidden;border-radius:34px;background:#05070A;flex:none;border:1px solid #2A3138">
+      <div class="h-blob h-b1" style="animation-delay:-6s;top:300px"></div><div class="h-blob h-b2" style="animation-delay:-9s;top:80px"></div><div class="h-blob h-b3" style="animation-delay:-4s"></div><div class="h-blob h-b4" style="animation-delay:-5s;top:480px"></div>
+      <div style="position:relative;padding:24px 22px 0;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#C3CBD1;font-weight:500"><span>Sesión en curso</span><span class="h-glass" style="display:flex;border-radius:99px;padding:3px;font-weight:600"><span style="padding:4px 12px;border-radius:99px;background:#FFB000;color:#1A1100">kg</span><span style="padding:4px 12px">lb</span></span></div>
+        <h1 class="h-heat" style="margin:4px 0 0;font-family:'Unbounded',sans-serif;font-size:50px;line-height:1;font-weight:800;letter-spacing:-.03em">SESIÓN</h1>
+
+        <div class="h-glass" style="padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-family:'Unbounded',sans-serif;font-size:11px;color:#FFB000;font-weight:700">01</span>
+          <span style="font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;flex:1;line-height:1.15">Prensa de piernas</span>
+          <button class="h-btn" onClick="{{toggle}}" style="font-family:'Instrument Sans',sans-serif;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);color:#EEF2F4;border:1px solid rgba(238,242,244,.24);border-radius:99px;padding:7px 13px">{{label}}</button>
+        </div>
+
+        <div class="h-fold" style="grid-template-rows: {{rows}}">
+          <div class="h-fold-in" style="opacity: {{op}}; filter: blur({{bl}}); transform: translateY({{ty}})">
+            <div class="h-glass" style="padding:12px;display:flex;gap:12px;align-items:center;margin-bottom:2px">
+              <svg width="104" height="92" viewBox="0 0 104 92"><defs><linearGradient id="hg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2A3138"></stop><stop offset=".55" stop-color="#8A949D"></stop><stop offset="1" stop-color="#FFB000"></stop></linearGradient></defs><ellipse cx="46" cy="52" rx="26" ry="36" fill="url(#hg)" opacity=".92"></ellipse><ellipse cx="46" cy="52" rx="14" ry="22" fill="#FFF3D0" opacity=".78"></ellipse><circle cx="46" cy="52" r="46" fill="none" stroke="rgba(238,242,244,.14)"></circle></svg>
+              <div style="font-size:13px;line-height:1.45;color:#C3CBD1"><b style="color:#FFC53D;font-weight:600">Cuádriceps al rojo vivo.</b><br>Baja a ~90° de rodilla, lumbar pegada, sin bloquear arriba.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size:12px;color:#C3CBD1;padding-left:4px">Sugerido <b style="color:#FFC53D;font-weight:600">85 kg × 10</b> · sube carga</div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="h-glass" style="padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Unbounded',sans-serif;font-size:12px;color:#8E9AA3;width:18px">1</span>
+              <span style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:700;flex:1;text-align:center;line-height:1">80<small style="font-size:12px;font-weight:500;color:#8E9AA3"> kg</small></span><span style="color:#8E9AA3">×</span>
+              <span style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:700;flex:1;text-align:center;line-height:1">10<small style="font-size:12px;font-weight:500;color:#8E9AA3"> rep</small></span></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:11px;font-size:12px;font-weight:600;text-align:center">
+              <span style="padding:10px 0;border-radius:12px;background:#39424A;opacity:.6">Fácil</span>
+              <span style="padding:10px 0;border-radius:12px;background:linear-gradient(120deg,#FFB000,#FFC53D);color:#1A1100;box-shadow:0 0 22px rgba(255,176,0,.6)">Costó</span>
+              <span style="padding:10px 0;border-radius:12px;background:#7B8791;color:#05070A;opacity:.6">Casi</span>
+              <span style="padding:10px 0;border-radius:12px;background:#FF5A36;opacity:.6">Fallo</span>
+            </div>
+          </div>
+          <div class="h-glass" style="padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Unbounded',sans-serif;font-size:12px;color:#8E9AA3;width:18px">2</span>
+              <span style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:700;flex:1;text-align:center;line-height:1">80<small style="font-size:12px;font-weight:500;color:#8E9AA3"> kg</small></span><span style="color:#8E9AA3">×</span>
+              <span style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:700;flex:1;text-align:center;line-height:1">10<small style="font-size:12px;font-weight:500;color:#8E9AA3"> rep</small></span></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:11px;font-size:12px;font-weight:600;text-align:center">
+              <span style="padding:10px 0;border-radius:12px;background:#39424A;opacity:.6">Fácil</span>
+              <span style="padding:10px 0;border-radius:12px;background:#FFB000;color:#1A1100;opacity:.6">Costó</span>
+              <span style="padding:10px 0;border-radius:12px;background:#7B8791;color:#05070A;opacity:.6">Casi</span>
+              <span style="padding:10px 0;border-radius:12px;background:#FF5A36;opacity:.6">Fallo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-glass" style="position:absolute;left:16px;right:16px;bottom:16px;padding:12px 16px;display:flex;align-items:center;gap:16px">
+        <div style="position:relative;width:54px;height:54px;flex:none"><div class="h-pulse"></div><div class="h-pulse" style="animation-delay:-1.4s"></div><div style="position:absolute;inset:14px;border-radius:50%;background:radial-gradient(circle,#FFF3D0,#FFB000)"></div></div>
+        <div style="flex:1"><div style="font-size:11px;color:#8E9AA3;letter-spacing:.14em">DESCANSO</div><div style="font-family:'Unbounded',sans-serif;font-size:28px;font-weight:700;line-height:1.1">1:30</div></div>
+        <div class="h-btn" style="font-size:13px;font-weight:600;border:1px solid rgba(238,242,244,.3);border-radius:99px;padding:9px 14px">Omitir</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="font-size:11px;color:#9aa6ae;letter-spacing:.04em">MOVIMIENTO ▸ fondo líquido de acero con una mancha de ámbar que cruza · degradado de calor en el título · barras que se llenan al entrar · plegado con desenfoque · pulso radial en el descanso</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":960}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { open: true }; }
+  renderVals() {
+    const open = this.state.open;
+    return {
+      rows: open ? '1fr' : '0fr',
+      op: open ? '1' : '0',
+      bl: open ? '0px' : '10px',
+      ty: open ? '0px' : '-12px',
+      label: open ? 'Cerrar ficha' : 'Ver ficha',
+      toggle: () => this.setState({ open: !this.state.open }),
+    };
+  }
+}
+</script>
+</body>
+</html>
