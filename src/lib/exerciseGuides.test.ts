@@ -51,7 +51,7 @@ const rootOf = (pose: string, backAngle: number, leg: boolean): P => {
   switch (pose) {
     case 'tumbado': hip = [92, 118]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
     case 'prono': hip = [100, 118]; sh = [hip[0] + TORSO, hip[1]]; break
-    case 'de-pie': hip = [104, FLOOR - 75]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
+    case 'de-pie': hip = [104, FLOOR - 77]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
     case 'colgado': sh = [108, 32]; hip = [108, 32 + TORSO]; break
     default: hip = [92, FLOOR - 36]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]
   }

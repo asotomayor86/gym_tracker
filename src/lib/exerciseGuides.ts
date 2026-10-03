@@ -937,35 +937,35 @@ const CRUNCH: Step3 = ['Tronco recto', 'Flexiona el tronco', 'Abdomen contraído
  */
 const MOTION: Record<string, Motion> = {
   'Prensa de piernas': { steps: ['Rodillas flexionadas', 'Empuja la plataforma', 'Piernas extendidas'], from: [0.567, 0.44], via: [0.628, 0.513], to: [0.7, 0.6], limb: 'pierna' },
-  'Hack squat': { steps: SQUAT, from: [0.467, 0.02], via: [0.589, 0.153], to: [0.711, 0.287], limb: 'pierna' },
-  'Sentadilla en multipower': { steps: SQUAT, from: [0.467, 0.02], via: [0.589, 0.153], to: [0.711, 0.287], limb: 'pierna' },
+  'Hack squat': { steps: SQUAT, from: [0.467, 0.033], via: [0.589, 0.167], to: [0.711, 0.3], limb: 'pierna' },
+  'Sentadilla en multipower': { steps: SQUAT, from: [0.467, 0.033], via: [0.589, 0.167], to: [0.711, 0.3], limb: 'pierna' },
   'Extensión de cuádriceps': { steps: LEG_EXT, from: [0.656, 0.02], via: [0.767, 0.073], to: [0.822, 0.16], limb: 'pierna' },
   'Curl femoral tumbado': { steps: LEG_CURL, from: [0.017, 0.267], via: [0.078, 0.4], to: [0.3, 0.52], limb: 'pierna' },
   'Curl femoral sentado': { steps: LEG_CURL, from: [0.822, 0.173], via: [0.733, 0.06], to: [0.594, 0.033], limb: 'pierna' },
   'Abductores en máquina': { steps: ['Piernas juntas', 'Abre las piernas', 'Piernas abiertas'], from: [0.622, 0.013], to: [0.689, 0.02], limb: 'pierna' },
   'Aductores en máquina': { steps: ['Piernas abiertas', 'Junta las piernas', 'Piernas juntas'], from: [0.689, 0.02], to: [0.622, 0.013], limb: 'pierna' },
-  'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], from: [0.578, 0.113], to: [0.367, 0.02], limb: 'pierna' },
+  'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], from: [0.578, 0.127], to: [0.367, 0.033], limb: 'pierna' },
   'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.378, 0.127], to: [0.389, 0.233], limb: 'brazo' },
   'Elevación de gemelos sentado': { steps: ['Talones abajo', 'Sube de puntillas', 'Máxima elevación'], from: [0.661, 0.0], to: [0.661, 0.04], limb: 'pierna' },
-  'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Empuja con la punta', 'Máxima elevación'], from: [0.661, 0.56], to: [0.678, 0.587], limb: 'pierna' },
+  'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Empuja con la punta', 'Máxima elevación'], from: [0.678, 0.587], to: [0.689, 0.6], limb: 'pierna' },
 
   'Press de pecho en máquina': { steps: ['Codos flexionados', 'Empuja adelante', 'Brazos extendidos'], from: [0.474, 0.542], to: [0.613, 0.548] },
   'Press inclinado en máquina': { steps: ['Codos flexionados', 'Empuja adelante y arriba', 'Brazos extendidos'], from: [0.292, 0.449], to: [0.404, 0.676] },
   'Press banca en multipower': { steps: ['Barra en el pecho', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.178, 0.36], to: [0.178, 0.553] },
   'Peck deck (aperturas en máquina)': { steps: ['Brazos abiertos', 'Junta los brazos', 'Brazos cerrados'], from: [0.241, 0.475], via: [0.441, 0.468], to: [0.596, 0.535] },
-  'Cruce de poleas': { steps: ['Brazos abiertos', 'Cruza hacia abajo', 'Manos cruzadas'], from: [0.306, 0.742], via: [0.495, 0.729], to: [0.578, 0.622] },
+  'Cruce de poleas': { steps: ['Brazos abiertos', 'Cruza hacia abajo', 'Manos cruzadas'], from: [0.306, 0.755], via: [0.495, 0.742], to: [0.578, 0.635] },
   'Fondos asistidos en máquina': { steps: ['Codos flexionados', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.533, 0.653], to: [0.489, 0.52] },
 
   'Press de hombros en máquina': { steps: ['Manos a los hombros', 'Empuja arriba', 'Brazos extendidos'], from: [0.431, 0.599], via: [0.42, 0.745], to: [0.409, 0.879] },
   'Elevaciones laterales en máquina': { steps: RAISE, elbow: 'arriba', from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519] },
-  'Elevaciones laterales en polea': { steps: RAISE, elbow: 'arriba', from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78] },
+  'Elevaciones laterales en polea': { steps: RAISE, elbow: 'arriba', from: [0.533, 0.553], via: [0.622, 0.647], to: [0.678, 0.793] },
   'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], elbow: 'arriba', from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505] },
-  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Manos junto a la cara'], view: 'frontal', from: [0.711, 0.86], to: [0.544, 0.9] },
+  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Manos junto a la cara'], view: 'frontal', from: [0.711, 0.873], to: [0.544, 0.913] },
 
   'Curl de bíceps en máquina': { steps: CURL, from: [0.43, 0.275], via: [0.518, 0.382], to: [0.452, 0.528] },
-  'Curl de bíceps en polea': { steps: CURL, from: [0.511, 0.527], via: [0.633, 0.633], to: [0.567, 0.793] },
+  'Curl de bíceps en polea': { steps: CURL, from: [0.511, 0.54], via: [0.633, 0.647], to: [0.567, 0.807] },
   'Curl en banco Scott (máquina)': { steps: CURL, from: [0.416, 0.275], via: [0.471, 0.409], to: [0.371, 0.515] },
-  'Extensión de tríceps en polea (cuerda)': { steps: TRI, from: [0.628, 0.653], via: [0.589, 0.553], to: [0.494, 0.513] },
+  'Extensión de tríceps en polea (cuerda)': { steps: TRI, from: [0.628, 0.667], via: [0.589, 0.567], to: [0.494, 0.527] },
   'Extensión de tríceps en máquina': { steps: TRI, from: [0.507, 0.435], to: [0.541, 0.368] },
   'Press de tríceps en máquina (fondos)': { steps: TRI, from: [0.496, 0.408], via: [0.463, 0.315], to: [0.396, 0.262] },
 
@@ -975,7 +975,7 @@ const MOTION: Record<string, Motion> = {
   'Dominadas asistidas en máquina': { steps: ['Brazos estirados', 'Sube el cuerpo', 'Barbilla sobre asas'], from: [0.506, 0.987], to: [0.556, 0.88] },
 
   'Crunch en máquina': { steps: CRUNCH, from: [0.485, 0.568], to: [0.53, 0.382] },
-  'Crunch en polea': { steps: CRUNCH, from: [0.533, 0.927], to: [0.6, 0.687] },
+  'Crunch en polea': { steps: CRUNCH, from: [0.533, 0.94], to: [0.6, 0.7] },
 }
 
 const MERGED: ExerciseGuide[] = BASE.map((x) => {
