@@ -12,10 +12,10 @@ import { EFFORT_LABELS, type Effort, type SetLog } from '../lib/types'
 import { formatWeight, fromKg, roundTo, toKg } from '../lib/units'
 
 const EFFORT_STYLE: Record<Effort, string> = {
-  easy_done: 'bg-e-easy text-paper',
-  hard_done: 'bg-e-hard text-ink',
-  failed_close: 'bg-e-close text-ink',
-  failed: 'bg-e-fail text-paper',
+  easy_done: 'bg-e-easy text-e-easy-ink',
+  hard_done: 'bg-e-hard text-on-signal shadow-[0_0_20px_rgb(255_176_0/0.45)]',
+  failed_close: 'bg-e-close text-on-signal',
+  failed: 'bg-e-fail text-on-signal',
 }
 const EFFORTS = Object.keys(EFFORT_LABELS) as Effort[]
 
@@ -81,9 +81,9 @@ export default function SessionPage() {
       title="Sesión"
       eyebrow={`${fmtDate(session.startedAt)}${finished ? ' · cerrada' : ' · en curso'}`}
       actions={
-        <div className="flex border border-ink">
+        <div className="glass flex rounded-full p-1">
           {(['kg', 'lb'] as const).map((u) => (
-            <button key={u} onClick={() => setPrefs({ unit: u })} className={`mono px-3 min-h-10 text-sm font-bold uppercase ${unit === u ? 'bg-ink text-paper' : ''}`}>
+            <button key={u} onClick={() => setPrefs({ unit: u })} className={`rounded-full px-3.5 min-h-9 text-sm font-semibold transition-colors ${unit === u ? 'bg-signal text-on-signal' : 'text-mute'}`}>
               {u}
             </button>
           ))}
@@ -95,26 +95,26 @@ export default function SessionPage() {
         const sug = suggestNext(lastSessionSets(allLogs, eid, session.id), { incrementKg })
         return (
           <section key={eid}>
-            <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-b-2 border-ink pb-1.5">
-              <span className="mono text-xs font-bold text-signal">{String(gi + 1).padStart(2, '0')}</span>
-              <h2 className="display min-w-0 flex-1 text-3xl">{exName(eid)}</h2>
+            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="num text-xs text-signal-text">{String(gi + 1).padStart(2, '0')}</span>
+              <h2 className="display min-w-0 flex-1 text-xl leading-snug">{exName(eid)}</h2>
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
             {sug && (
-              <div className="mono mb-1 border-l-[3px] border-signal bg-surface px-3 py-1.5 text-xs">
-                <span className="text-mute">SUGERIDO </span>
-                <b>{formatWeight(sug.weightKg, unit)} × {sug.reps}</b>
+              <div className="mb-2 rounded-xl bg-signal/10 px-3 py-2 text-xs">
+                <span className="text-mute">Sugerido </span>
+                <b className="text-signal-text">{formatWeight(sug.weightKg, unit)} × {sug.reps}</b>
                 <span className="text-mute"> · {sug.reason}</span>
               </div>
             )}
             {sets.map((l, i) => (
-              <div key={l.id} className={`border-b border-hair py-3 ${isDone(l) ? 'bg-surface/70' : ''}`}>
+              <div key={l.id} className={`glass mb-3 p-3 transition-colors ${isDone(l) ? 'border-signal/40' : ''}`}>
                 <div className="flex items-end gap-3">
-                  <span className="mono w-6 pb-2 text-sm text-mute">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="num w-6 pb-2.5 text-xs text-mute">{String(i + 1).padStart(2, '0')}</span>
                   <label className="flex-1">
                     <span className="eyebrow">{unit}</span>
                     <CommitInput
-                      type="number" inputMode="decimal" aria-label="Peso" className={`${inputCls} mono text-center text-3xl font-bold`}
+                      type="number" inputMode="decimal" aria-label="Peso" className={`${inputCls} num text-center text-2xl`}
                       value={roundTo(fromKg(l.weightKg, unit), 0.5)}
                       onCommit={(v) => {
                         const w = parseFloat(v)
@@ -122,24 +122,24 @@ export default function SessionPage() {
                       }}
                     />
                   </label>
-                  <span className="display pb-2 text-2xl text-mute">×</span>
+                  <span className="pb-2 text-xl text-mute">×</span>
                   <label className="flex-1">
                     <span className="eyebrow">reps</span>
                     <CommitInput
-                      type="number" inputMode="numeric" aria-label="Repeticiones" className={`${inputCls} mono text-center text-3xl font-bold`}
+                      type="number" inputMode="numeric" aria-label="Repeticiones" className={`${inputCls} num text-center text-2xl`}
                       value={l.reps}
                       onCommit={(v) => Number.isFinite(parseInt(v)) && patchLog(l, { reps: Math.max(0, parseInt(v)) })}
                     />
                   </label>
                   <button aria-label="Quitar serie" className="pb-2 px-1 text-mute hover:text-e-fail" onClick={() => remove('setLogs', l.id)}>✕</button>
                 </div>
-                <div className="mt-2 grid grid-cols-4 gap-px border border-ink bg-ink pl-0 ml-9">
+                <div className="mt-3 grid grid-cols-4 gap-1.5 pl-9">
                   {EFFORTS.map((e) => (
                     <button
                       key={e}
                       onClick={() => setEffort(l, e)}
-                      className={`min-h-11 text-xs font-bold uppercase tracking-wider transition-colors ${
-                        l.effort === e ? EFFORT_STYLE[e] : 'bg-paper text-mute hover:text-ink'
+                      className={`press min-h-11 rounded-xl text-xs font-semibold transition-colors ${
+                        l.effort === e ? EFFORT_STYLE[e] : 'bg-ink/5 text-mute hover:text-ink'
                       }`}
                     >
                       {EFFORT_LABELS[e]}
@@ -148,13 +148,13 @@ export default function SessionPage() {
                 </div>
               </div>
             ))}
-            <Button variant="ghost" className="mt-3 w-full" onClick={() => addSet(eid)}>+ Serie</Button>
+            <Button variant="ghost" className="w-full" onClick={() => addSet(eid)}>+ Serie</Button>
           </section>
         )
       })}
 
       <select
-        className={`${inputCls} bg-paper`}
+        className={inputCls}
         value=""
         onChange={async (e) => e.target.value && addSet(e.target.value)}
       >
@@ -190,17 +190,18 @@ function RestTimer({ until, onClose }: { until: number; onClose: () => void }) {
 
   const ready = left === 0
   return (
-    <div
-      className={`fixed bottom-20 md:bottom-6 inset-x-4 md:inset-x-auto md:right-6 md:w-80 z-30 flex items-center justify-between gap-4 border-2 border-ink px-4 py-3 ${
-        ready ? 'bg-signal text-on-signal' : 'bg-ink text-paper'
-      }`}
-    >
-      <span className="eyebrow !text-current opacity-70">{ready ? '¡Siguiente serie!' : 'Descanso'}</span>
-      <span className="mono text-4xl font-bold leading-none">
-        {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-      </span>
-      <button onClick={onClose} className="px-2 min-h-11" aria-label="Cerrar">✕</button>
+    <div className="glass-flat fixed bottom-24 md:bottom-6 inset-x-4 md:inset-x-auto md:right-6 md:w-80 z-30 flex items-center gap-4 px-4 py-3 shadow-[0_8px_30px_rgb(0_0_0/0.35)]">
+      <div className="relative size-12 shrink-0" aria-hidden>
+        {!ready && <><div className="pulse-ring" /><div className="pulse-ring" style={{ animationDelay: '-1.4s' }} /></>}
+        <div className="absolute inset-3.5 rounded-full bg-[radial-gradient(circle,#fff3d0,#ffb000)]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="eyebrow">{ready ? '¡Siguiente serie!' : 'Descanso'}</div>
+        <div className="num text-3xl leading-tight">
+          {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
+        </div>
+      </div>
+      <button onClick={onClose} className="press rounded-full border border-hair px-3 min-h-10 text-sm text-mute hover:text-ink" aria-label="Cerrar">✕</button>
     </div>
   )
 }
-

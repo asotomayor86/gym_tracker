@@ -17,14 +17,13 @@ export default function TemplatesPage() {
   return (
     <Page title="Rutinas" eyebrow={`${templates.length} guardadas`} actions={<Button onClick={add}>+ Nueva</Button>}>
       {templates.length === 0 && <EmptyState>Aún no hay rutinas: crea la primera con «+ Nueva» y añade ejercicios con series y repeticiones objetivo.</EmptyState>}
-      <ul>
-        {templates.map((t, i) => (
+      <ul className="space-y-3">
+        {templates.map((t) => (
           <li key={t.id}>
-            <Link to={`/templates/${t.id}`} className="group flex items-center gap-4 border-b border-hair py-4 hover:bg-surface">
-              <span className="mono w-6 text-sm text-mute">{String(i + 1).padStart(2, '0')}</span>
-              <span className="display flex-1 text-4xl">{t.name}</span>
-              <span className="mono text-sm text-mute">{items.filter((x) => x.templateId === t.id).length} ej.</span>
-              <span className="display text-2xl transition-transform group-hover:translate-x-1">→</span>
+            <Link to={`/templates/${t.id}`} className="glass press group flex items-center gap-4 p-4">
+              <span className="display flex-1 text-lg leading-snug">{t.name}</span>
+              <span className="text-xs text-mute">{items.filter((x) => x.templateId === t.id).length} ej.</span>
+              <span className="display text-xl text-signal-text transition-transform group-hover:translate-x-1">→</span>
             </Link>
           </li>
         ))}

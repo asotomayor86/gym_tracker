@@ -58,23 +58,23 @@ export default function TemplateEditPage() {
     >
       <CommitInput
         value={template.name}
-        className={`${inputCls} display !text-4xl !leading-none`}
+        className={`${inputCls} display !text-xl !min-h-14`}
         onCommit={(v) => save('workoutTemplates', { ...template, name: v.trim() || template.name })}
       />
       {rows.map((r, i) => {
         const ex = byId.get(r.exerciseId)
         const update = (patch: Partial<typeof r>) => save('templateExercises', { ...r, ...patch })
         return (
-          <div key={r.id} className="space-y-3 border border-ink bg-surface p-3">
+          <div key={r.id} className="glass space-y-3 p-4">
             <div className="flex items-center justify-between gap-2">
-              <div className="display text-2xl">{ex?.name ?? 'Ejercicio eliminado'}</div>
+              <div className="display text-base leading-snug">{ex?.name ?? 'Ejercicio eliminado'}</div>
               <div className="flex gap-1">
                 <Button variant="ghost" className="px-3" onClick={() => move(i, -1)} disabled={i === 0}>↑</Button>
                 <Button variant="ghost" className="px-3" onClick={() => move(i, 1)} disabled={i === rows.length - 1}>↓</Button>
                 <Button variant="danger" className="px-3" onClick={() => remove('templateExercises', r.id)}>✕</Button>
               </div>
             </div>
-            <div className="eyebrow grid grid-cols-4 gap-3 [&_input]:mono [&_input]:text-center [&_input]:text-xl [&_input]:font-bold [&_input]:normal-case [&_input]:tracking-normal [&_input]:text-ink">
+            <div className="eyebrow grid grid-cols-4 gap-3 [&_input]:num [&_input]:mt-1 [&_input]:text-center [&_input]:text-lg [&_input]:normal-case [&_input]:tracking-normal [&_input]:text-ink">
               <label>Series<CommitInput type="number" inputMode="numeric" value={r.targetSets} onCommit={(v) => update({ targetSets: Math.max(1, Math.round(num(v, r.targetSets))) })} /></label>
               <label>Reps<CommitInput type="number" inputMode="numeric" value={r.targetReps} onCommit={(v) => update({ targetReps: Math.max(1, Math.round(num(v, r.targetReps))) })} /></label>
               <label>Peso ({unit})<CommitInput type="number" inputMode="decimal" value={roundTo(fromKg(r.targetWeightKg, unit), 0.5)} onCommit={(v) => update({ targetWeightKg: toKg(num(v, 0), unit) })} /></label>
@@ -83,7 +83,7 @@ export default function TemplateEditPage() {
           </div>
         )
       })}
-      <select className={`${inputCls} bg-paper`} value="" onChange={(e) => addExercise(e.target.value)}>
+      <select className={inputCls} value="" onChange={(e) => addExercise(e.target.value)}>
         <option value="">+ Añadir ejercicio…</option>
         {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map((e) => (
           <option key={e.id} value={e.id}>{e.name}</option>

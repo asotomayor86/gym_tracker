@@ -23,11 +23,11 @@ export default function SettingsPage() {
 
   return (
     <Page title="Ajustes" eyebrow="Preferencias y datos">
-      <section className="space-y-3">
+      <section className="glass space-y-4 p-5">
         <SectionTitle>Preferencias</SectionTitle>
         <label className="eyebrow block">
           Unidad de peso
-          <select className={`${inputCls} bg-paper text-base normal-case tracking-normal text-ink`} value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as 'kg' | 'lb' })}>
+          <select className={`${inputCls} mt-1 text-base normal-case tracking-normal text-ink`} value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as 'kg' | 'lb' })}>
             <option value="kg">Kilos (kg)</option>
             <option value="lb">Libras (lb)</option>
           </select>
@@ -41,11 +41,11 @@ export default function SettingsPage() {
         </label>
       </section>
 
-      <section className="space-y-3">
+      <section className="glass space-y-3 p-5">
         <SectionTitle>Sincronización</SectionTitle>
         {logged ? (
           <>
-            <p className="mono text-xs text-mute">
+            <p className="text-xs text-mute">
               Estado: {sync.status}
               {sync.lastSync && ` · última: ${new Date(sync.lastSync).toLocaleTimeString()}`}
               {sync.error && ` · ${sync.error}`}
@@ -64,7 +64,7 @@ export default function SettingsPage() {
               try { await login(password); setPassword('') } catch (err) { setError(err instanceof Error ? err.message : 'Error') }
             }}
           >
-            <p className="mono text-xs text-mute">Los datos funcionan sin conexión. Inicia sesión para sincronizar con la nube.</p>
+            <p className="text-xs text-mute">Los datos funcionan sin conexión. Inicia sesión para sincronizar con la nube.</p>
             <input className={inputCls} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <p className="text-sm text-e-fail">{error}</p>}
             <Button type="submit" disabled={!password}>Entrar</Button>
@@ -72,7 +72,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      <section className="space-y-2">
+      <section className="glass space-y-3 p-5">
         <SectionTitle>Copia de seguridad</SectionTitle>
         <Button variant="ghost" onClick={exportJson}>Exportar JSON</Button>
       </section>

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Page, SectionTitle, inputCls } from '../components/ui'
+import { HeatBar, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { usePrefs } from '../lib/prefs'
@@ -25,24 +25,18 @@ export default function StatsPage() {
     <Page title="Stats" eyebrow="Últimos 30 días">
       <section>
         <SectionTitle n="01" aside="series / 30 d">Grupos musculares</SectionTitle>
-        <div>
+        <div className="glass space-y-4 p-4">
           {stats.map((s) => {
             const stale = s.daysSince == null || s.daysSince >= 7
             return (
-              <div key={s.muscle} className="border-b border-hair py-2.5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="display text-xl">{MUSCLE_LABELS[s.muscle]}</span>
-                  <span className="mono text-xs text-mute">
-                    <span className={stale ? 'font-bold text-signal' : ''}>
-                      {s.daysSince == null ? 'sin datos' : s.daysSince === 0 ? 'hoy' : `hace ${s.daysSince} d`}
-                    </span>
-                    {' · '}7d {s.sets7} · <b className="text-ink">{s.sets30}</b>
-                  </span>
-                </div>
-                <div className="mt-1.5 h-2 bg-ink/10">
-                  <div className={`h-2 ${stale ? 'bg-ink/40' : 'bg-signal'}`} style={{ width: `${(s.sets30 / maxSets) * 100}%` }} />
-                </div>
-              </div>
+              <HeatBar
+                key={s.muscle}
+                label={MUSCLE_LABELS[s.muscle]}
+                value={s.sets30}
+                max={maxSets}
+                cold={stale}
+                note={`${s.daysSince == null ? 'sin datos' : s.daysSince === 0 ? 'hoy' : `hace ${s.daysSince} d`} · 7 d: ${s.sets7} · ${s.sets30} series`}
+              />
             )
           })}
         </div>
@@ -54,7 +48,7 @@ export default function StatsPage() {
           <p className="text-mute">Completa alguna serie para ver tu progreso.</p>
         ) : (
           <>
-            <select className={`${inputCls} bg-paper font-semibold`} value={selected} onChange={(e) => setExerciseId(e.target.value)}>
+            <select className={`${inputCls} font-semibold`} value={selected} onChange={(e) => setExerciseId(e.target.value)}>
               {trained.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
             <LineChart values={history.map((h) => roundTo(fromKg(h.e1rm, unit), 0.5))} unit={unit} />
@@ -74,16 +68,21 @@ function LineChart({ values, unit }: { values: number[]; unit: string }) {
   const pts = values.map((v, i) => [P + (i / (values.length - 1)) * (W - 2 * P), H - P - ((v - min) / span) * (H - 2 * P)])
   const last = pts[pts.length - 1]
   return (
-    <div className="border border-ink bg-surface p-3">
-      <div className="mono mb-2 flex items-baseline justify-between">
-        <span className="text-4xl font-bold">{values[values.length - 1]}<span className="ml-1 text-sm text-mute">{unit}</span></span>
+    <div className="glass p-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="num text-4xl">{values[values.length - 1]}<span className="ml-1 text-sm font-normal text-mute">{unit}</span></span>
         <span className="eyebrow">máx {max} · mín {min}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Evolución del 1RM estimado">
+        <defs>
+          <linearGradient id="lc" x1="0" x2="1"><stop offset="0" stopColor="#7b8791" /><stop offset="1" stopColor="#ffb000" /></linearGradient>
+          <linearGradient id="lf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#ffb000" stopOpacity="0.28" /><stop offset="1" stopColor="#ffb000" stopOpacity="0" /></linearGradient>
+        </defs>
         {[0.25, 0.5, 0.75].map((f) => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="var(--hair)" />)}
-        <polyline fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="miter" points={pts.map((p) => p.join(',')).join(' ')} />
-        {pts.slice(0, -1).map((p, i) => <rect key={i} x={p[0] - 2.5} y={p[1] - 2.5} width="5" height="5" fill="var(--surface)" stroke="var(--ink)" strokeWidth="1.5" />)}
-        <rect x={last[0] - 5} y={last[1] - 5} width="10" height="10" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
+        <polygon points={`${pts[0][0]},${H} ${pts.map((p) => p.join(',')).join(' ')} ${last[0]},${H}`} fill="url(#lf)" />
+        <polyline fill="none" stroke="url(#lc)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={pts.map((p) => p.join(',')).join(' ')} />
+        {pts.slice(0, -1).map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="3" fill="var(--surface)" stroke="var(--mute)" strokeWidth="1.5" />)}
+        <circle cx={last[0]} cy={last[1]} r="6" fill="var(--signal)" stroke="var(--surface)" strokeWidth="2" />
       </svg>
     </div>
   )

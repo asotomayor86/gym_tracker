@@ -1,13 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, EmptyState, Page, SectionTitle } from '../components/ui'
+import { Button, EmptyState, HeatBar, Page, SectionTitle } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS, fmtDate } from '../lib/labels'
 import { startSession } from '../lib/session'
 import { isDone, muscleStats } from '../lib/stats'
-
-const pad = (n: number) => String(n).padStart(2, '0')
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -31,13 +29,13 @@ export default function HomePage() {
       {active && (
         <Link
           to={`/session/${active.id}`}
-          className="group flex items-end justify-between gap-4 border border-ink bg-signal p-4 text-on-signal"
+          className="press glow group flex items-center justify-between gap-4 rounded-[20px] bg-gradient-to-br from-signal to-signal-2 p-5 text-on-signal"
         >
-          <div>
-            <div className="eyebrow !text-on-signal/70">● En curso</div>
-            <div className="display mt-2 text-4xl">{tName(active.templateId)}</div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest opacity-75"><span className="size-2 rounded-full bg-on-signal" /> En curso</div>
+            <div className="display mt-2 text-2xl">{tName(active.templateId)}</div>
           </div>
-          <span className="display text-5xl transition-transform group-hover:translate-x-1">→</span>
+          <span className="display text-3xl transition-transform group-hover:translate-x-1">→</span>
         </Link>
       )}
 
@@ -48,11 +46,10 @@ export default function HomePage() {
             Aún no hay rutinas: crea la primera en <Link className="underline decoration-signal decoration-2 underline-offset-4" to="/templates">Rutinas</Link>.
           </EmptyState>
         )}
-        <ul>
-          {templates.map((t, i) => (
-            <li key={t.id} className="flex items-center gap-4 border-b border-hair py-3">
-              <span className="mono w-6 text-sm text-mute">{pad(i + 1)}</span>
-              <span className="display flex-1 text-3xl">{t.name}</span>
+        <ul className="space-y-3">
+          {templates.map((t) => (
+            <li key={t.id} className="glass flex items-center gap-4 p-4">
+              <span className="display flex-1 text-lg leading-snug">{t.name}</span>
               <Button disabled={!!active} onClick={async () => navigate(`/session/${await startSession(t.id)}`)}>Empezar</Button>
             </li>
           ))}
@@ -61,16 +58,17 @@ export default function HomePage() {
 
       {neglected.length > 0 && (
         <section>
-          <SectionTitle n="02" aside="Abandonados">Llevas tiempo sin trabajar</SectionTitle>
-          <div className="grid grid-cols-3 gap-px border border-ink bg-ink">
+          <SectionTitle n="02" aside="Mapa de calor">Llevas tiempo sin trabajar</SectionTitle>
+          <div className="glass space-y-4 p-4">
             {neglected.map((m) => (
-              <div key={m.muscle} className="bg-surface p-3">
-                <div className="mono text-4xl font-bold leading-none text-signal">
-                  {m.daysSince == null ? '—' : m.daysSince}
-                  <span className="ml-1 text-xs font-normal text-mute">{m.daysSince == null ? '' : 'd'}</span>
-                </div>
-                <div className="eyebrow mt-2 !text-ink">{MUSCLE_LABELS[m.muscle]}</div>
-              </div>
+              <HeatBar
+                key={m.muscle}
+                label={MUSCLE_LABELS[m.muscle]}
+                value={m.daysSince == null ? 6 : Math.max(6, 100 - m.daysSince * 4)}
+                max={100}
+                cold
+                note={m.daysSince == null ? 'sin datos · frío' : `${m.daysSince} d · frío`}
+              />
             ))}
           </div>
         </section>
@@ -79,15 +77,15 @@ export default function HomePage() {
       {recent.length > 0 && (
         <section>
           <SectionTitle n="03">Últimas sesiones</SectionTitle>
-          <ul>
+          <ul className="glass-flat divide-y divide-hair overflow-hidden">
             {recent.map((s) => (
               <li key={s.id}>
-                <Link to={`/session/${s.id}`} className="flex items-baseline gap-3 border-b border-hair py-3 hover:bg-surface">
-                  <span className="mono w-24 shrink-0 text-xs uppercase text-mute">{fmtDate(s.startedAt)}</span>
+                <Link to={`/session/${s.id}`} className="flex items-baseline gap-3 px-4 py-3.5 hover:bg-ink/5">
+                  <span className="w-24 shrink-0 text-xs uppercase tracking-wider text-mute">{fmtDate(s.startedAt)}</span>
                   <span className="flex-1 font-semibold">{tName(s.templateId)}</span>
-                  <span className="mono text-sm">
+                  <span className="num text-sm">
                     {logs.filter((l) => l.sessionId === s.id && isDone(l)).length}
-                    <span className="text-mute"> ser.</span>
+                    <span className="text-xs font-normal text-mute"> ser.</span>
                   </span>
                 </Link>
               </li>

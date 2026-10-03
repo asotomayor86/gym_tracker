@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { GuideToggle } from '../components/ExerciseGuideView'
-import { Button, CommitInput, EmptyState, MuscleSelect, Page, SectionTitle, card, inputCls } from '../components/ui'
+import { Button, CommitInput, EmptyState, MuscleSelect, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../lib/types'
@@ -24,7 +24,7 @@ export default function ExercisesPage() {
 
   return (
     <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={<Button onClick={add}>+ Nuevo</Button>}>
-      <input className={`${inputCls} text-lg`} placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className={`${inputCls} text-base`} type="search" placeholder="Buscar ejercicio…" value={query} onChange={(e) => setQuery(e.target.value)} />
       {exercises.length === 0 && <EmptyState>Aún no hay ejercicios: crea el primero con «+ Nuevo».</EmptyState>}
       {MUSCLE_GROUPS.map((m) => {
         const list = shown.filter((e) => e.primaryMuscle === m)
@@ -32,21 +32,23 @@ export default function ExercisesPage() {
         return (
           <section key={m}>
             <SectionTitle aside={String(list.length)}>{MUSCLE_LABELS[m]}</SectionTitle>
-            {list.map((e) =>
-              editing === e.id ? (
-                <ExerciseForm key={e.id} exercise={e} onClose={() => setEditing(null)} />
-              ) : (
-                <div key={e.id} className="flex flex-wrap items-center gap-2 border-b border-hair py-2 hover:bg-surface">
-                  <button onClick={() => setEditing(e.id)} className="min-w-0 flex-1 py-1 text-left">
-                    <div className="font-semibold">{e.name}</div>
-                    <div className="mono text-xs text-mute">
-                      {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
-                    </div>
-                  </button>
-                  <GuideToggle exercise={e} />
-                </div>
-              ),
-            )}
+            <div className="glass-flat divide-y divide-hair overflow-hidden">
+              {list.map((e) =>
+                editing === e.id ? (
+                  <ExerciseForm key={e.id} exercise={e} onClose={() => setEditing(null)} />
+                ) : (
+                  <div key={e.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 transition-colors hover:bg-ink/5">
+                    <button onClick={() => setEditing(e.id)} className="min-w-0 flex-1 py-1 text-left">
+                      <div className="font-semibold">{e.name}</div>
+                      <div className="text-xs text-mute">
+                        {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
+                      </div>
+                    </button>
+                    <GuideToggle exercise={e} />
+                  </div>
+                ),
+              )}
+            </div>
           </section>
         )
       })}
@@ -64,7 +66,7 @@ function ExerciseForm({ exercise: e, onClose }: { exercise: Exercise; onClose: (
     })
 
   return (
-    <div className={`${card} space-y-3 p-3 !border-signal`}>
+    <div className="space-y-3 bg-ink/5 p-4">
       <CommitInput value={e.name} onCommit={(v) => update({ name: v.trim() || e.name })} placeholder="Nombre" />
       <div className="grid grid-cols-2 gap-2">
         <label className="eyebrow">
@@ -83,8 +85,8 @@ function ExerciseForm({ exercise: e, onClose }: { exercise: Exercise; onClose: (
             <button
               key={m}
               onClick={() => toggleSecondary(m)}
-              className={`border border-ink px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                e.secondaryMuscles.includes(m) ? 'bg-ink text-paper' : 'text-mute hover:text-ink'
+              className={`press rounded-full border px-3 py-1 text-xs font-semibold ${
+                e.secondaryMuscles.includes(m) ? 'border-signal bg-signal text-on-signal' : 'border-hair text-mute hover:text-ink'
               }`}
             >
               {MUSCLE_LABELS[m]}
