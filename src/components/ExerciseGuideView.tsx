@@ -63,7 +63,7 @@ export default function ExerciseGuideView({ exercise }: { exercise: Pick<Exercis
 
       <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         <BodyMap primary={guide.primary} secondary={guide.secondary} />
-        <ExerciseDiagram diagram={{ ...guide.diagram, limb }} primary={guide.primary} secondary={guide.secondary} steps={guide.steps} />
+        <ExerciseDiagram diagram={{ ...guide.diagram, limb }} primary={guide.primary} secondary={guide.secondary} steps={guide.steps} tempo={guide.tempo} tempoNote={guide.tempoNote} />
       </div>
 
       <Block title="Posición inicial"><Bullets items={guide.setup} mark="▸" /></Block>

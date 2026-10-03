@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MovementDiagram } from '../lib/guideTypes'
+import type { ExerciseGuide, MovementDiagram } from '../lib/guideTypes'
 import type { MuscleGroup } from '../lib/types'
 
 /**
@@ -13,7 +13,6 @@ type Prof = [t: number, w: number][]
 const FLOOR = 156
 const TORSO = 50, THIGH = 45, SHIN = 33, UARM = 27, FARM = 24
 const BX = 20, BW = 180, BH = FLOOR - 6
-const CYCLE_MS = 5200
 
 const pt = ([x, y]: [number, number]): P => [BX + x * BW, FLOOR - y * BH]
 const add = (a: P, b: P): P => [a[0] + b[0], a[1] + b[1]]
@@ -108,30 +107,66 @@ const NECK_PROF: Prof = [[0, 4.2], [1, 3.8]]
 const FOOT_PROF: Prof = [[0, 4.2], [1, 2.6]]
 
 const smooth = (x: number) => x * x * (3 - 2 * x)
-/** Progreso 0..1 del recorrido con pausa en cada extremo. */
-function progress(ms: number) {
-  const k = (ms % CYCLE_MS) / CYCLE_MS
-  if (k < 0.14) return 0
-  if (k < 0.46) return smooth((k - 0.14) / 0.32)
-  if (k < 0.6) return 1
-  if (k < 0.92) return 1 - smooth((k - 0.6) / 0.32)
-  return 0
+type Seg = 'pause0' | 'ida' | 'pause1' | 'vuelta'
+type Timeline = { pz: number; ida: number; vuelta: number; total: number }
+
+/** Ciclo = pausa(from) · ida · pausa(to) · vuelta, con los tiempos del tempo (si lo hay). */
+function timeline(tempo: ExerciseGuide['tempo'], loadPhase: 'ida' | 'vuelta'): Timeline {
+  const pz = (tempo?.pauseS ?? (tempo ? 0.5 : 0.73)) * 1000
+  const conc = (tempo?.concentricS ?? 1.66) * 1000, ecc = (tempo?.eccentricS ?? 1.66) * 1000
+  const ida = loadPhase === 'ida' ? conc : ecc, vuelta = loadPhase === 'ida' ? ecc : conc
+  return { pz, ida, vuelta, total: 2 * pz + ida + vuelta }
+}
+/** Progreso 0..1 (from→to) y tramo en curso. Easing suave en cada tramo, sin caída libre. */
+function at(tl: Timeline, ms: number): { p: number; seg: Seg } {
+  let t = ms % tl.total
+  if (t < tl.pz) return { p: 0, seg: 'pause0' }
+  t -= tl.pz
+  if (t < tl.ida) return { p: smooth(t / tl.ida), seg: 'ida' }
+  t -= tl.ida
+  if (t < tl.pz) return { p: 1, seg: 'pause1' }
+  t -= tl.pz
+  return { p: 1 - smooth(t / tl.vuelta), seg: 'vuelta' }
 }
 const stepOf = (p: number) => (p < 0.15 ? 0 : p > 0.85 ? 2 : 1)
+const VERB: Partial<Record<MovementDiagram['motion'], string>> = {
+  empuje: 'Empujas', tiron: 'Tiras', curl: 'Flexionas', flexion: 'Flexionas', extension: 'Estiras',
+  elevacion: 'Subes', sentadilla: 'Subes', bisagra: 'Subes',
+}
+
+/** Flecha (línea acortada + cabeza) sobre una polilínea. */
+function arrowOn(pts: P[]) {
+  const e = pts[pts.length - 1], q = pts[pts.length - 2]
+  const ang = Math.atan2(e[1] - q[1], e[0] - q[0]), hd = 8
+  const head = str([
+    e,
+    [e[0] - hd * Math.cos(ang - 0.45), e[1] - hd * Math.sin(ang - 0.45)],
+    [e[0] - hd * Math.cos(ang + 0.45), e[1] - hd * Math.sin(ang + 0.45)],
+  ])
+  const line = str([...pts.slice(0, -1), [e[0] - 5 * Math.cos(ang), e[1] - 5 * Math.sin(ang)]])
+  return { head, line }
+}
 
 export default function ExerciseDiagram({
-  diagram: d, primary = [], secondary = [], steps,
+  diagram: d, primary = [], secondary = [], steps, tempo, tempoNote,
 }: {
   diagram: MovementDiagram
   primary?: MuscleGroup[]
   secondary?: MuscleGroup[]
   /** Etiquetas de los 3 pasos (inicio, medio, final). */
   steps?: [string, string, string]
+  /** Ritmo recomendado; sin él (o en isométricos) no se pintan fases de carga/control. */
+  tempo?: ExerciseGuide['tempo']
+  tempoNote?: string
 }) {
+  const phases = !!tempo && d.motion !== 'isometrico'
+  const loadPhase = d.loadPhase ?? 'ida'
+  const tl = timeline(phases ? tempo : undefined, loadPhase)
   const [reduced] = useState(() => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [paused, setPaused] = useState(reduced)
-  const [p, setP] = useState(reduced ? 1 : 0)
-  const clock = useRef(0)
+  const [t, setT] = useState(reduced ? tl.pz + tl.ida + tl.pz / 2 : tl.pz)
+  const clock = useRef(t)
+  const { p, seg: tramo } = at(tl, t)
 
   useEffect(() => {
     if (paused) return
@@ -139,18 +174,23 @@ export default function ExerciseDiagram({
     const tick = (now: number) => {
       clock.current += now - last
       last = now
-      setP(progress(clock.current))
+      setT(clock.current)
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [paused])
 
-  const seek = (target: number) => {
+  const seek = (i: number) => {
+    const target = i === 0 ? tl.pz / 2 : i === 1 ? tl.pz + tl.ida / 2 : tl.pz + tl.ida + tl.pz / 2
     setPaused(true)
-    setP(target)
-    clock.current = target === 0 ? 0 : target === 1 ? CYCLE_MS * 0.5 : CYCLE_MS * 0.3
+    clock.current = target
+    setT(target)
   }
+  // Fase activa: el tramo en curso (en pausa, el que acaba de terminar).
+  const phase: 'ida' | 'vuelta' = tramo === 'ida' || tramo === 'pause1' ? 'ida' : 'vuelta'
+  const concentric = phase === loadPhase
+  const effort = loadPhase === 'ida' ? p : 1 - p
 
   const base = skeleton(d.pose, d.backAngle)
   let s = base
@@ -236,8 +276,8 @@ export default function ExerciseDiagram({
   // El resalte "late": más intenso cuanto más cerca del punto de máximo esfuerzo.
   const mStyle = (m: MuscleGroup) =>
     prim.has(m)
-      ? { fill: 'var(--signal)', fillOpacity: 0.5 + 0.5 * p, stroke: 'var(--ink)', strokeWidth: 0.8 }
-      : { fill: 'var(--signal)', fillOpacity: 0.16 + 0.2 * p, stroke: 'var(--signal)', strokeWidth: 0.8 }
+      ? { fill: 'var(--signal)', fillOpacity: 0.5 + 0.5 * effort, stroke: 'var(--ink)', strokeWidth: 0.8 }
+      : { fill: 'var(--signal)', fillOpacity: 0.16 + 0.2 * effort, stroke: 'var(--signal)', strokeWidth: 0.8 }
 
   const body = { fill: 'color-mix(in srgb, var(--ink) 7%, var(--surface))', stroke: 'var(--ink)', strokeOpacity: 0.55, strokeWidth: 1, strokeLinejoin: 'round' as const }
   const mute = { stroke: 'var(--ink)', strokeOpacity: 0.28 }
@@ -265,15 +305,21 @@ export default function ExerciseDiagram({
   const seated = d.pose === 'sentado' || d.pose === 'sentado-reclinado'
   const vertical = Math.abs(B[1] - A[1]) > Math.abs(B[0] - A[0])
 
-  // Recorrido: A → (V) → B, con flecha en el último tramo
-  const last = V ?? A
-  const ang = Math.atan2(B[1] - last[1], B[0] - last[0]), hd = 8
-  const arrow = str([
-    B,
-    [B[0] - hd * Math.cos(ang - 0.45), B[1] - hd * Math.sin(ang - 0.45)],
-    [B[0] - hd * Math.cos(ang + 0.45), B[1] - hd * Math.sin(ang + 0.45)],
-  ])
-  const lineEnd: P = [B[0] - 5 * Math.cos(ang), B[1] - 5 * Math.sin(ang)]
+  // Recorrido: la flecha de carga apunta SIEMPRE en el sentido de la fase concéntrica;
+  // la vuelta (excéntrica) va en tenue, desplazada, en sentido contrario.
+  const idaPts: P[] = V ? [A, V, B] : [A, B]
+  const loadPts = loadPhase === 'ida' ? idaPts : [...idaPts].reverse()
+  const loadArrow = arrowOn(loadPts)
+  const nl = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1
+  const off: P = [(-(B[1] - A[1]) / nl) * 5, ((B[0] - A[0]) / nl) * 5]
+  const retArrow = arrowOn([...loadPts].reverse().map((q) => add(q, off)))
+  const markFill = !phases || concentric
+    ? { fill: 'var(--signal)', stroke: 'var(--ink)' }
+    : { fill: 'var(--surface)', stroke: 'var(--signal)', strokeDasharray: '2 1.5' }
+  const verb = (() => {
+    if (d.motion === 'apertura') return (d.loadPhase === 'vuelta' ? B[0] <= A[0] : B[0] > A[0]) ? 'Juntas' : 'Abres'
+    return VERB[d.motion] ?? 'Cargas'
+  })()
 
   const active = stepOf(p)
   const label = steps ? steps[active] : (d.caption ?? 'Recorrido del movimiento')
@@ -304,7 +350,8 @@ export default function ExerciseDiagram({
                 const th = seg(hipP, knee, [[0, 9], [1, 6.5]])
                 const sh = seg(knee, foot, [[0, 6.5], [1, 4]])
                 const hot = prim.has('gluteo') ? 'gluteo' : 'cuadriceps'
-                const tipX = 110 + sd * (kx + (opening ? 28 : 15)), tailX = 110 + sd * (kx + (opening ? 15 : 28))
+                const loadOpening = loadPhase === 'vuelta' ? !opening : opening
+                const tipX = 110 + sd * (kx + (loadOpening ? 28 : 15)), tailX = 110 + sd * (kx + (loadOpening ? 15 : 28))
                 return (
                   <g key={sd}>
                     <line x1={110 + sd * (kx + 9)} y1="109" x2={110 + sd * (kx + 9)} y2="134" stroke="var(--ink)" strokeOpacity="0.3" strokeWidth="6" />
@@ -312,9 +359,9 @@ export default function ExerciseDiagram({
                     <polygon points={str([[foot[0] - 7, 150], [foot[0] + 7, 150], [foot[0] + 9, 156], [foot[0] - 9, 156]])} {...body} />
                     <polygon points={str(th.outline)} {...body} />
                     {(prim.has(hot) || sec.has(hot)) && <polygon points={str(th.band(0.1, 0.95, 'both'))} {...mStyle(hot)} />}
-                    <line x1={tailX} y1="124" x2={tipX} y2="124" stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" />
-                    <polygon points={str([[tipX, 124], [tipX - sd * 6, 120.5], [tipX - sd * 6, 127.5]])} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.6" strokeLinejoin="round" />
-                    <rect x={knee[0] - 4.5} y={knee[1] - 4.5} width="9" height="9" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
+                    <g opacity={!phases || concentric ? 1 : 0.35}><line x1={tailX} y1="124" x2={tipX} y2="124" stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" />
+                    <polygon points={str([[tipX, 124], [tipX - sd * 6, 120.5], [tipX - sd * 6, 127.5]])} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.6" strokeLinejoin="round" /></g>
+                    <rect x={knee[0] - 4.5} y={knee[1] - 4.5} width="9" height="9" {...markFill} strokeWidth="1.5" />
                   </g>
                 )
               })}
@@ -374,17 +421,18 @@ export default function ExerciseDiagram({
                   {(prim.has('core') || sec.has('core')) && <polygon points={str([[100, 78], [120, 78], [118, 106], [102, 106]])} {...mStyle('core')} />}
                   {/* flecha de sentido en cada mano */}
                   {(() => {
-                    const dir: P = lift ? [0, -1] : closing ? [-a.sd, 0] : [a.sd, 0]
+                    const flip = loadPhase === 'vuelta' ? -1 : 1
+                    const dir: P = lift ? [0, -flip] : closing ? [-a.sd * flip, 0] : [a.sd * flip, 0]
                     const o: P = lift ? [a.sd * 13, 0] : [0, 14]
                     const t0 = add(a.hand, o), t1 = add(t0, [dir[0] * 16, dir[1] * 16])
                     return (
-                      <g>
+                      <g opacity={!phases || concentric ? 1 : 0.35}>
                         <line x1={t0[0]} y1={t0[1]} x2={t1[0]} y2={t1[1]} stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" />
                         <polygon points={str([t1, add(t1, [-dir[0] * 6 - dir[1] * 3.5, -dir[1] * 6 + dir[0] * 3.5]), add(t1, [-dir[0] * 6 + dir[1] * 3.5, -dir[1] * 6 - dir[0] * 3.5])])} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.6" strokeLinejoin="round" />
                       </g>
                     )
                   })()}
-                  <rect x={a.hand[0] - 4.5} y={a.hand[1] - 4.5} width="9" height="9" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
+                  <rect x={a.hand[0] - 4.5} y={a.hand[1] - 4.5} width="9" height="9" {...markFill} strokeWidth="1.5" />
                 </g>
               ))}
             </g>
@@ -417,11 +465,19 @@ export default function ExerciseDiagram({
           {d.implement === 'maquina' && <circle cx={cur[0] + 3} cy={cur[1] - 1} r="3.5" fill="var(--ink)" fillOpacity="0.35" />}
 
           {/* recorrido: línea punteada + flecha + marca de inicio */}
-          <polyline
-            points={str(V ? [A, V, lineEnd] : [A, lineEnd])}
-            fill="none" stroke="var(--signal)" strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" strokeLinejoin="round"
-          />
-          <polygon points={arrow} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.7" strokeLinejoin="round" />
+          {phases ? (
+            <>
+              <polyline points={retArrow.line} fill="none" stroke="var(--ink)" strokeOpacity={concentric ? 0.28 : 0.7} strokeWidth="1.6" strokeDasharray="1.5 4" strokeLinecap="round" strokeLinejoin="round" />
+              <polygon points={retArrow.head} fill="none" stroke="var(--ink)" strokeOpacity={concentric ? 0.28 : 0.7} strokeWidth="1.2" strokeLinejoin="round" />
+              <polyline points={loadArrow.line} fill="none" stroke="var(--signal)" strokeOpacity={concentric ? 1 : 0.35} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+              <polygon points={loadArrow.head} fill="var(--signal)" fillOpacity={concentric ? 1 : 0.35} stroke="var(--ink)" strokeOpacity={concentric ? 1 : 0.35} strokeWidth="0.7" strokeLinejoin="round" />
+            </>
+          ) : (
+            <>
+              <polyline points={loadArrow.line} fill="none" stroke="var(--signal)" strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" strokeLinejoin="round" />
+              <polygon points={loadArrow.head} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.7" strokeLinejoin="round" />
+            </>
+          )}
           <rect x={A[0] - 3.5} y={A[1] - 3.5} width="7" height="7" fill="var(--surface)" stroke="var(--signal)" strokeWidth="1.5" />
 
           {/* figura */}
@@ -443,7 +499,7 @@ export default function ExerciseDiagram({
           ))}
 
           {/* punto móvil */}
-          <rect x={cur[0] - 4.5} y={cur[1] - 4.5} width="9" height="9" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
+          <rect x={cur[0] - 4.5} y={cur[1] - 4.5} width="9" height="9" {...markFill} strokeWidth="1.5" />
           </>)}
         </svg>
         <button
@@ -464,7 +520,7 @@ export default function ExerciseDiagram({
             <button
               key={i}
               type="button"
-              onClick={() => seek(i === 0 ? 0 : i === 1 ? 0.5 : 1)}
+              onClick={() => seek(i)}
               aria-label={`Paso ${i + 1}`}
               aria-current={active === i}
               className={`size-6 border border-ink text-[0.7rem] font-bold ${active === i ? 'bg-signal text-on-signal' : 'text-mute hover:text-ink'}`}
@@ -475,6 +531,23 @@ export default function ExerciseDiagram({
         </span>
         <span className="min-w-0 flex-1">{label}</span>
       </figcaption>
+      {phases && (
+        <div className="mono mt-2 space-y-1 text-[0.7rem] leading-snug">
+          <span
+            aria-label={concentric ? 'Fase de carga' : 'Fase de control'}
+            className={`inline-block border px-2 py-0.5 font-bold uppercase tracking-wider ${
+              concentric ? 'border-ink bg-signal text-on-signal' : 'border-dashed border-ink/50 text-mute'
+            }`}
+          >
+            {concentric ? `● Carga · ${verb}` : '○ Vuelves · controla'}
+          </span>
+          <p className="text-mute">
+            <b className="text-ink">Carga</b> (concéntrica): el músculo se acorta venciendo el peso.{' '}
+            <b className="text-ink">Controla</b> (excéntrica): se alarga frenando el peso.
+          </p>
+        </div>
+      )}
+      {tempoNote && phases && <p className="mono mt-1 text-[0.7rem] text-ink">{tempoNote}</p>}
     </figure>
   )
 }
