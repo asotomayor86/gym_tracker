@@ -54,6 +54,34 @@ export interface Tempo {
   pauseS?: number
 }
 
+/**
+ * Ids de músculo del humanoide (v4). Se usan con sufijo L/R en las vistas frontal y posterior; 'rectus' y 'serr'
+ * son familias (rectus0-3, serr0-3), 'ham' incluye hamS y 'gastroc' incluye gastrocM salvo que se pidan aparte.
+ */
+export const MUSCLE_IDS = [
+  'pec', 'pecC', 'trap', 'trapM', 'rhomb', 'teres', 'infra', 'lat', 'erector',
+  'glute', 'gmed', 'tfl', 'oblique', 'rectus', 'serr',
+  'dant', 'dlat', 'dpost',
+  'biceps', 'brachialis', 'brachrad', 'triceps', 'fext', 'fflex',
+  'rfem', 'vlat', 'vmed', 'add', 'ham', 'hamS', 'gastroc', 'gastrocM', 'soleus', 'tib',
+] as const
+export type MuscleId = (typeof MUSCLE_IDS)[number]
+
+/** Grupo de MuscleGroup al que pertenece cada id (tib no tiene grupo propio; 'add' cuenta como cuádriceps hasta que exista 'aductores'). */
+export const MUSCLE_ID_GROUP: Record<MuscleId, MuscleGroup | null> = {
+  pec: 'pecho', pecC: 'pecho',
+  trap: 'espalda', trapM: 'espalda', rhomb: 'espalda', teres: 'espalda', infra: 'espalda', lat: 'espalda', erector: 'espalda',
+  glute: 'gluteo', gmed: 'gluteo', tfl: 'gluteo',
+  oblique: 'core', rectus: 'core', serr: 'core',
+  dant: 'hombro', dlat: 'hombro', dpost: 'hombro',
+  biceps: 'biceps', brachialis: 'biceps', triceps: 'triceps',
+  brachrad: 'antebrazo', fext: 'antebrazo', fflex: 'antebrazo',
+  rfem: 'cuadriceps', vlat: 'cuadriceps', vmed: 'cuadriceps', add: 'cuadriceps',
+  ham: 'isquios', hamS: 'isquios',
+  gastroc: 'gemelo', gastrocM: 'gemelo', soleus: 'gemelo',
+  tib: null,
+}
+
 export interface ExerciseGuide {
   /** Nombre EXACTO del ejercicio en seed.ts (así se enlaza con el catálogo). */
   key: string
@@ -76,5 +104,7 @@ export interface ExerciseGuide {
   tempo?: Tempo
   /** Frase breve para el usuario sobre el ritmo. */
   tempoNote?: string
+  /** Músculos concretos a resaltar en el humanoide (más fino que primary/secondary de MuscleGroup). */
+  muscleIds?: { primary: MuscleId[]; secondary: MuscleId[] }
   diagram: MovementDiagram
 }

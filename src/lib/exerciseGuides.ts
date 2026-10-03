@@ -1,4 +1,4 @@
-import type { Difficulty, ExerciseCategory, ExerciseGuide, Implement, MotionKind, Point, Pose, Tempo } from './guideTypes'
+import type { Difficulty, ExerciseCategory, ExerciseGuide, Implement, MotionKind, MuscleId, Point, Pose, Tempo } from './guideTypes'
 import type { MuscleGroup } from './types'
 
 /**
@@ -1035,13 +1035,67 @@ const TEMPO_OVERRIDE: Record<string, { tempo?: Tempo; note?: string }> = {
   'Elevación de gemelos en prensa': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s; pausa 1 s abajo (estiramiento) y 1 s arriba (contracción).' },
 }
 
+const QUAD: MuscleId[] = ['rfem', 'vlat', 'vmed']
+const BICEPS_SEC: MuscleId[] = ['brachialis', 'brachrad']
+const BACK_PULL_SEC: MuscleId[] = ['biceps', 'brachialis', 'brachrad', 'rhomb', 'trapM', 'dpost', 'infra']
+const ROW_MUSCLES: { primary: MuscleId[]; secondary: MuscleId[] } = {
+  primary: ['lat', 'rhomb', 'trapM'], secondary: ['biceps', 'brachialis', 'dpost', 'teres', 'erector'],
+}
+
+/** Músculos a resaltar por ejercicio (ids del humanoide v4). Refina el grupo de primary/secondary. */
+const MUSCLES: Record<string, { primary: MuscleId[]; secondary: MuscleId[] }> = {
+  'Prensa de piernas': { primary: QUAD, secondary: ['glute', 'add', 'ham'] },
+  'Hack squat': { primary: QUAD, secondary: ['glute', 'add', 'ham', 'erector'] },
+  'Sentadilla en multipower': { primary: QUAD, secondary: ['glute', 'add', 'ham', 'erector', 'rectus'] },
+  'Extensión de cuádriceps': { primary: QUAD, secondary: [] },
+  'Curl femoral tumbado': { primary: ['ham', 'hamS'], secondary: ['gastroc', 'gastrocM'] },
+  'Curl femoral sentado': { primary: ['ham', 'hamS'], secondary: ['gastroc', 'gastrocM'] },
+  'Abductores en máquina': { primary: ['gmed', 'tfl'], secondary: ['glute'] },
+  'Aductores en máquina': { primary: ['add'], secondary: [] },
+  'Patada de glúteo en máquina': { primary: ['glute'], secondary: ['ham', 'hamS', 'erector'] },
+  'Hip thrust en máquina': { primary: ['glute'], secondary: ['ham', 'hamS', 'add'] },
+  // Sentado (rodilla a 90°) trabaja sobre todo el sóleo; con la rodilla casi recta (prensa), el gastrocnemio.
+  'Elevación de gemelos sentado': { primary: ['soleus'], secondary: ['gastroc', 'gastrocM'] },
+  'Elevación de gemelos en prensa': { primary: ['gastroc', 'gastrocM'], secondary: ['soleus'] },
+
+  'Press de pecho en máquina': { primary: ['pec'], secondary: ['dant', 'triceps', 'serr'] },
+  'Press inclinado en máquina': { primary: ['pecC', 'pec'], secondary: ['dant', 'triceps'] },
+  'Press banca en multipower': { primary: ['pec'], secondary: ['dant', 'triceps', 'serr'] },
+  'Peck deck (aperturas en máquina)': { primary: ['pec'], secondary: ['dant', 'serr'] },
+  'Cruce de poleas': { primary: ['pec'], secondary: ['dant', 'serr'] },
+  'Fondos asistidos en máquina': { primary: ['pec', 'triceps'], secondary: ['dant'] },
+
+  'Press de hombros en máquina': { primary: ['dant', 'dlat'], secondary: ['triceps', 'trap', 'serr'] },
+  'Elevaciones laterales en máquina': { primary: ['dlat'], secondary: ['dant', 'trap'] },
+  'Elevaciones laterales en polea': { primary: ['dlat'], secondary: ['dant', 'trap'] },
+  'Pájaros en peck deck (deltoides posterior)': { primary: ['dpost'], secondary: ['infra', 'rhomb', 'trapM'] },
+  'Face pull en polea': { primary: ['dpost', 'rhomb', 'trapM'], secondary: ['infra', 'dlat'] },
+
+  'Curl de bíceps en máquina': { primary: ['biceps'], secondary: [...BICEPS_SEC, 'fflex'] },
+  'Curl de bíceps en polea': { primary: ['biceps'], secondary: [...BICEPS_SEC, 'fflex'] },
+  'Curl en banco Scott (máquina)': { primary: ['biceps'], secondary: BICEPS_SEC },
+  'Extensión de tríceps en polea (cuerda)': { primary: ['triceps'], secondary: [] },
+  'Extensión de tríceps en máquina': { primary: ['triceps'], secondary: [] },
+  'Press de tríceps en máquina (fondos)': { primary: ['triceps'], secondary: ['dant', 'pec'] },
+
+  'Jalón al pecho': { primary: ['lat', 'teres'], secondary: BACK_PULL_SEC },
+  'Remo sentado en máquina': ROW_MUSCLES,
+  'Remo en polea baja': ROW_MUSCLES,
+  'Dominadas asistidas en máquina': { primary: ['lat', 'teres'], secondary: BACK_PULL_SEC },
+
+  'Crunch en máquina': { primary: ['rectus'], secondary: ['oblique', 'serr'] },
+  'Crunch en polea': { primary: ['rectus'], secondary: ['oblique', 'serr'] },
+}
+
 export const GUIDES: ExerciseGuide[] = MERGED.map((x) => {
-  if (x.diagram.motion === 'isometrico') return x // sin fases: no hay concéntrica ni excéntrica
+  const muscleIds = MUSCLES[x.key]
+  if (x.diagram.motion === 'isometrico') return muscleIds ? { ...x, muscleIds } : x // sin fases: no hay concéntrica ni excéntrica
   const o = TEMPO_OVERRIDE[x.key]
   return {
     ...x,
     tempo: o?.tempo ?? TEMPO[x.category],
     tempoNote: o?.note ?? TEMPO_NOTE[x.category],
+    muscleIds,
     diagram: { ...x.diagram, loadPhase: LOAD_ON_RETURN.has(x.key) ? 'vuelta' : 'ida' },
   }
 })

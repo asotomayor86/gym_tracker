@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GUIDES, findGuide } from './exerciseGuides'
 import { SEED } from './seed'
+import { MUSCLE_ID_GROUP, MUSCLE_IDS } from './guideTypes'
 import { MUSCLE_GROUPS } from './types'
 
 describe('exerciseGuides', () => {
@@ -126,5 +127,33 @@ describe('fases de carga y ritmo', () => {
       expect(x.tempo, x.key).toBeUndefined()
       expect(x.diagram.loadPhase, x.key).toBeUndefined()
     }
+  })
+})
+
+describe('muscleIds', () => {
+  it('cada ficha tiene ids válidos, coherentes con sus grupos', () => {
+    for (const x of GUIDES) {
+      expect(x.muscleIds, x.key).toBeDefined()
+      const { primary, secondary } = x.muscleIds!
+      expect(primary.length, x.key).toBeGreaterThan(0)
+      for (const id of [...primary, ...secondary]) expect(MUSCLE_IDS, `${x.key}: ${id}`).toContain(id)
+      expect(new Set([...primary, ...secondary]).size, `${x.key}: ids repetidos`).toBe(primary.length + secondary.length)
+      const groups = new Set([...x.primary, ...x.secondary])
+      // los ids principales pertenecen a algún grupo de la ficha, y al menos uno al principal
+      for (const id of primary) {
+        const g = MUSCLE_ID_GROUP[id]
+        if (g) expect(groups.has(g), `${x.key}: ${id} → ${g}`).toBe(true)
+      }
+      expect(primary.some((id) => x.primary.includes(MUSCLE_ID_GROUP[id]!)), x.key).toBe(true)
+      // todo grupo principal de la ficha queda representado
+      for (const g of x.primary) {
+        expect([...primary, ...secondary].some((id) => MUSCLE_ID_GROUP[id] === g), `${x.key}: ${g}`).toBe(true)
+      }
+    }
+  })
+
+  it('gemelos: sentado = sóleo principal, prensa = gastrocnemio principal', () => {
+    expect(findGuide('Elevación de gemelos sentado')?.muscleIds?.primary).toEqual(['soleus'])
+    expect(findGuide('Elevación de gemelos en prensa')?.muscleIds?.primary).toEqual(['gastroc', 'gastrocM'])
   })
 })
