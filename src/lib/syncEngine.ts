@@ -30,8 +30,8 @@ export interface SyncDeps {
   storage: KeyValueStore
   fetch: typeof fetch
   isOnline: () => boolean
-  /** Se ejecuta tras cada intento de sync (también fallido): reconcilia la semilla con lo descargado. */
-  afterSync?: () => Promise<unknown>
+  /** Se ejecuta tras cada intento de sync (ok = pull correcto): reconcilia semilla/datos con lo descargado. */
+  afterSync?: (ok: boolean) => Promise<unknown>
   /** Espera tras un cambio local antes de subirlo (agrupa ráfagas de guardados). */
   debounceMs?: number
   /** Esperas de reintento tras un fallo; la última se repite. */
@@ -182,7 +182,7 @@ export function createSyncEngine(deps: SyncDeps) {
       }
       publish({ online: deps.isOnline() })
     } finally {
-      await afterSync?.().catch(() => {})
+      await afterSync?.(phase === 'ok').catch(() => {})
       await refreshPending()
       // Cambios hechos mientras se sincronizaba: se suben en la siguiente tanda.
       if (phase === 'ok' && state.pending > 0) schedule(debounceMs)

@@ -22,7 +22,7 @@ const engine = createSyncEngine({
   storage: store,
   fetch: (...a) => fetch(...a),
   isOnline: () => navigator.onLine,
-  afterSync: ensureSeed,
+  afterSync: (ok) => ensureSeed({ merge: ok }),
 })
 
 export const useSyncState = () => useSyncExternalStore(engine.subscribe, engine.getState)

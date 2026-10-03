@@ -55,6 +55,8 @@ export interface SetLog extends SyncFields {
   sessionId: string
   exerciseId: string
   setIndex: number
+  /** Posición del ejercicio dentro de la sesión (0..n-1, por orden de alta o drag and drop). */
+  exerciseOrder: number
   reps: number
   weightKg: number
   inputUnit: Unit

@@ -50,6 +50,7 @@ export const setLogs = pgTable('set_logs', {
   sessionId: text('session_id').notNull(),
   exerciseId: text('exercise_id').notNull(),
   setIndex: integer('set_index').notNull(),
+  exerciseOrder: integer('exercise_order').notNull().default(0),
   reps: integer('reps').notNull(),
   weightKg: real('weight_kg').notNull(),
   inputUnit: text('input_unit').notNull(),

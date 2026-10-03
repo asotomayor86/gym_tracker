@@ -5,10 +5,10 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import { ensureSeed } from './lib/ensureSeed'
-import { awaitsFirstSync, startAutoSync } from './lib/sync'
+import { awaitsFirstSync, hasToken, startAutoSync } from './lib/sync'
 
 registerSW({ immediate: true })
-if (!awaitsFirstSync()) void ensureSeed()
+if (!awaitsFirstSync()) void ensureSeed({ merge: !hasToken() })
 startAutoSync()
 
 createRoot(document.getElementById('root')!).render(

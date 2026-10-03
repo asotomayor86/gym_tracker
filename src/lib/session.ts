@@ -11,13 +11,13 @@ export async function startSession(templateId: string): Promise<string> {
   const allLogs = await db.setLogs.filter(alive).toArray()
   const session = await save('sessions', { templateId, startedAt: Date.now(), endedAt: null, notes: '' })
 
-  for (const item of items) {
+  for (const [order, item] of items.entries()) {
     const suggestion = suggestNext(lastSessionSets(allLogs, item.exerciseId), { incrementKg })
     const weightKg = suggestion?.weightKg ?? item.targetWeightKg
     const reps = suggestion?.reps ?? item.targetReps
     for (let i = 0; i < item.targetSets; i++) {
       await save('setLogs', {
-        sessionId: session.id, exerciseId: item.exerciseId, setIndex: i, reps, weightKg,
+        sessionId: session.id, exerciseId: item.exerciseId, setIndex: i, exerciseOrder: order, reps, weightKg,
         inputUnit: unit, inputWeight: roundTo(fromKg(weightKg, unit), 0.5),
         effort: null, completedAt: null,
       })

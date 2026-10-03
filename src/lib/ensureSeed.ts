@@ -1,22 +1,43 @@
-import { db, save } from '../db/db'
+import { db, saveTo } from '../db/db'
+import { planMerge } from './mergePlan'
+import { planExerciseOrderBackfill } from './order'
 import { buildSeedRows } from './seed'
-import type { Exercise } from './types'
 import { planSeed } from './seedPlan'
+import type { Exercise } from './types'
 
 let running: Promise<void> | null = null
 
 /**
- * Carga automática de ejercicios y rutinas de ejemplo. Idempotente; las filas semilla NO se encolan en el
- * outbox (cada dispositivo genera las mismas), y cualquier edición del usuario (updatedAt real) pasa a sincronizarse.
+ * Mantenimiento de datos al abrir la app y tras cada sync. Idempotente:
+ *  1. (merge) fusiona ejercicios/rutinas duplicados por nombre (planMerge; con save(), sincroniza).
+ *     Solo se pide tras un pull correcto (o sin sesión), para decidir con los datos al día.
+ *  2. siembra el catálogo (filas semilla; NO se encolan) y migra grupos musculares.
+ *  3. ordena las series antiguas sin exerciseOrder.
  */
-export function ensureSeed(): Promise<void> {
-  running ??= doSeed().finally(() => (running = null))
+export function ensureSeed(opts: { merge?: boolean } = {}): Promise<void> {
+  running ??= doSeed(opts.merge ?? false).finally(() => (running = null))
   return running
 }
 
-async function doSeed() {
-  let migrate: Exercise[] = []
+async function doSeed(merge: boolean) {
+  if (merge) {
+    const plan = planMerge(
+      {
+        exercises: await db.exercises.toArray(),
+        workoutTemplates: await db.workoutTemplates.toArray(),
+        templateExercises: await db.templateExercises.toArray(),
+        sessions: await db.sessions.toArray(),
+        setLogs: await db.setLogs.toArray(),
+      },
+      Date.now(),
+    )
+    for (const table of ['exercises', 'workoutTemplates', 'templateExercises', 'sessions', 'setLogs'] as const) {
+      for (const row of plan[table]) await saveTo(db, table, row as never)
+    }
+  }
+
   const { exercises, workoutTemplates, templateExercises } = db
+  let migrate: Exercise[] = []
   await db.transaction('rw', exercises, workoutTemplates, templateExercises, async () => {
     const plan = planSeed(buildSeedRows(), {
       exercises: await exercises.toArray(),
@@ -32,5 +53,9 @@ async function doSeed() {
     await templateExercises.bulkPut(plan.insert.templateExercises)
   })
   // Correcciones de datos del usuario: sí se encolan para sincronizar.
-  for (const row of migrate) await save('exercises', row)
+  for (const row of migrate) await saveTo(db, 'exercises', row)
+
+  const sessionTemplate = new Map((await db.sessions.toArray()).map((s) => [s.id, s.templateId]))
+  const backfill = planExerciseOrderBackfill(await db.setLogs.toArray(), sessionTemplate, await db.templateExercises.toArray())
+  for (const row of backfill) await saveTo(db, 'setLogs', row)
 }

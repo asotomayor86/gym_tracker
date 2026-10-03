@@ -85,7 +85,7 @@ describe('sync end-to-end (dos dispositivos, API real)', () => {
     // Datos creados ANTES de iniciar sesión (como en el móvil del usuario).
     await saveTo(A.db, 'sessions', session('s1'))
     await saveTo(A.db, 'setLogs', {
-      id: 'l1', sessionId: 's1', exerciseId: 'e1', setIndex: 0, reps: 10, weightKg: 50, inputUnit: 'kg', inputWeight: 50,
+      id: 'l1', sessionId: 's1', exerciseId: 'e1', setIndex: 0, exerciseOrder: 0, reps: 10, weightKg: 50, inputUnit: 'kg', inputWeight: 50,
       effort: 'hard_done', completedAt: 2000,
     })
     expect(A.engine.getState()).toMatchObject({ status: 'unauth', loggedIn: false })

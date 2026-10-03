@@ -75,7 +75,6 @@ export function planSeed(seed: SeedRows, existing: SeedRows): SeedPlan {
   }
   refresh(exercises, seed.exercises, insert.exercises)
   refresh(templates, seed.workoutTemplates, insert.workoutTemplates)
-  refresh(tes, seed.templateExercises, insert.templateExercises)
   const exById = new Map(exercises.map((e) => [e.id, e]))
   const exByName = new Map(exercises.map((e) => [norm(e.name), e]))
   const exEffective = new Map<string, Exercise>() // id semilla -> fila real que lo representa
@@ -100,6 +99,10 @@ export function planSeed(seed: SeedRows, existing: SeedRows): SeedPlan {
     }
   }
 
+  // Refresco de filas de rutina semilla sin editar, ya con el ejercicio real al que apuntan (no el id semilla).
+  const effective = (s: TemplateExercise) => ({ ...s, exerciseId: exEffective.get(s.exerciseId)?.id ?? s.exerciseId })
+  refresh(tes, seed.templateExercises.map(effective), insert.templateExercises)
+
   // Un ejercicio de rutina semilla se añade si su rutina semilla está viva y su ejercicio no está borrado.
   const teIds = new Set(tes.map((t) => t.id))
   for (const s of seed.templateExercises) {
@@ -107,7 +110,7 @@ export function planSeed(seed: SeedRows, existing: SeedRows): SeedPlan {
     const tpl = tplEffective.get(s.templateId)
     const ex = exEffective.get(s.exerciseId)
     if (!tpl || tpl.deletedAt || !ex || ex.deletedAt) continue
-    insert.templateExercises.push({ ...s, exerciseId: ex.id })
+    insert.templateExercises.push(effective(s))
   }
 
   // 3) Migra ejercicios del usuario (ya editados o importados con id aleatorio) que siguen en el grupo antiguo.
