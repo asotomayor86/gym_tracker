@@ -5,7 +5,7 @@ type Seed = [name: string, primary: MuscleGroup, secondary: MuscleGroup[], equip
 
 // Solo máquinas guiadas / poleas. Orden pensado para fuerza + gasto calórico:
 // primero los multiarticulares grandes (piernas, pecho), luego aislamiento.
-const SEED: Seed[] = [
+export const SEED: Seed[] = [
   // Piernas (mayor gasto calórico)
   ['Prensa de piernas', 'cuadriceps', ['gluteo'], 'Máquina'],
   ['Hack squat', 'cuadriceps', ['gluteo'], 'Máquina'],
