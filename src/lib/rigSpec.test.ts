@@ -6,9 +6,9 @@ describe('rigSpec', () => {
     expect(ARM_REACH_TOTAL).toBe(53)
     expect(LEG_REACH_TOTAL).toBe(78)
     expect(SEG.thigh).toBe(SEG.shin)
-    const heightPx = SEG.ankleHeight + LEG_REACH_TOTAL * 0.985 + SEG.torso + 29 // hasta el vértice
-    expect(heightPx / SEG.head).toBeGreaterThan(7.2)
-    expect(heightPx / SEG.head).toBeLessThan(8)
+    const heightPx = SEG.ankleHeight + LEG_REACH_TOTAL * 0.985 + SEG.torso + SEG.neckVisible + SEG.head // hasta el vértice
+    expect(heightPx / SEG.head).toBeGreaterThan(6.9)
+    expect(heightPx / SEG.head).toBeLessThan(7.6)
   })
 
   it('deja el muslo horizontal en el asiento y el humanoide dentro del lienzo', () => {

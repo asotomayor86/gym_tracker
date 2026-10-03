@@ -3,18 +3,18 @@
  * Solo constantes y posiciones base por pose: la usan el rig (ExerciseDiagram), los datos de las fichas
  * (exerciseGuides) y el test de alcance, para que todos trabajen con los mismos números.
  *
- * Fisionomía: adulto atlético de ~7,6 cabezas, H = 160 px (ficha antropométrica de PREPARADOR: Drillis & Contini,
+ * Fisionomía: adulto atlético de ~7,1 cabezas, H ≈ 162 px (ficha antropométrica de PREPARADOR: Drillis & Contini,
  * Winter). Coordenadas SVG: x hacia delante, y hacia abajo; el humanoide mira hacia +x.
- * El lienzo pasa de 220×170 (suelo en y = 156) a 220×176 (suelo en y = 165).
+ * El lienzo pasa de 220×170 (suelo en y = 156) a 220×179 (suelo en y = 168).
  */
 
-export const CANVAS = { w: 220, h: 176, floor: 165 } as const
+export const CANVAS = { w: 220, h: 179, floor: 168 } as const
 
 /** Longitudes de segmento, articulación a articulación, en px. */
 export const SEG = {
-  head: 21, // barbilla–vértice (1 cabeza)
+  head: 23, // barbilla–vértice (1 cabeza, ≈7,1 por altura)
   neckVisible: 8, // acromion–barbilla
-  torso: 46, // hombro–cadera (2,2 cabezas)
+  torso: 48, // hombro–cadera (≈0,30 H)
   uarm: 30, // hombro–codo
   farm: 23, // codo–muñeca
   hand: 17, // muñeca–dedos
