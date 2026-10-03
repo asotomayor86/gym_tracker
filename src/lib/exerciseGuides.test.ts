@@ -24,6 +24,13 @@ describe('exerciseGuides', () => {
       expect(x.mistakes.length, x.key).toBeGreaterThan(0)
       expect(x.tips.length, x.key).toBeGreaterThan(0)
       for (const p of [x.diagram.from, x.diagram.to]) for (const v of p) expect(v >= 0 && v <= 1, x.key).toBe(true)
+      expect(x.steps, x.key).toHaveLength(3)
+      for (const t of x.steps ?? []) {
+        const words = t.trim().split(/\s+/).length
+        expect(words >= 2 && words <= 5, `${x.key}: "${t}"`).toBe(true)
+      }
+      for (const v of x.diagram.via ?? []) expect(v >= 0 && v <= 1, x.key).toBe(true)
+      expect(x.diagram.from, x.key).not.toEqual(x.diagram.to)
       expect(x.diagram.backAngle >= 0 && x.diagram.backAngle <= 90, x.key).toBe(true)
     }
   })

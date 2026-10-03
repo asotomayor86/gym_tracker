@@ -28,6 +28,8 @@ export interface MovementDiagram {
   /** Recorrido del agarre/punto de aplicación: inicio y fin. */
   from: Point
   to: Point
+  /** Punto intermedio opcional del recorrido (sentadilla, remo, press de hombros, curls con arco…): from → via → to. */
+  via?: Point
   /** Extremidad que se mueve por from→to: 'brazo' (por defecto) o 'pierna' (prensa, extensión/curl de pierna, sentadilla…). */
   limb?: 'brazo' | 'pierna'
   /** Texto corto sobre el recorrido (p. ej. "Empuja hacia delante y arriba"). */
@@ -50,5 +52,7 @@ export interface ExerciseGuide {
   breathing?: string
   tips: string[]
   mistakes: string[]
+  /** Etiquetas cortas (2-5 palabras) de la animación: [inicio, medio, final]. */
+  steps?: [inicio: string, medio: string, final: string]
   diagram: MovementDiagram
 }
