@@ -1,4 +1,4 @@
-import Dexie, { type Table } from 'dexie'
+import Dexie, { type DexieOptions, type Table } from 'dexie'
 import type {
   Biometric, Exercise, Session, SetLog, SyncFields, TemplateExercise, WorkoutTemplate,
 } from '../lib/types'
@@ -19,7 +19,7 @@ export interface TableRows {
   biometrics: Biometric
 }
 
-class GymDB extends Dexie {
+export class GymDB extends Dexie {
   exercises!: Table<Exercise, string>
   workoutTemplates!: Table<WorkoutTemplate, string>
   templateExercises!: Table<TemplateExercise, string>
@@ -28,8 +28,8 @@ class GymDB extends Dexie {
   biometrics!: Table<Biometric, string>
   outbox!: Table<OutboxEntry, string>
 
-  constructor() {
-    super('gym-tracker')
+  constructor(name = 'gym-tracker', options?: DexieOptions) {
+    super(name, options)
     this.version(1).stores({
       exercises: 'id, primaryMuscle',
       workoutTemplates: 'id',
@@ -47,25 +47,27 @@ export const db = new GymDB()
 type Input<K extends SyncTable> = Omit<TableRows[K], keyof SyncFields> & Partial<SyncFields>
 
 /** Crea o actualiza una fila y la encola para sincronizar. */
-export async function save<K extends SyncTable>(table: K, row: Input<K>): Promise<TableRows[K]> {
+export async function saveTo<K extends SyncTable>(d: GymDB, table: K, row: Input<K>): Promise<TableRows[K]> {
   const full = {
     deletedAt: null,
     ...row,
     id: row.id ?? crypto.randomUUID(),
     updatedAt: Date.now(),
   } as unknown as TableRows[K]
-  await db.transaction('rw', db[table], db.outbox, async () => {
-    await (db[table] as Table<TableRows[K], string>).put(full)
-    await db.outbox.put({ key: `${table}:${full.id}`, table, id: full.id })
+  await d.transaction('rw', d[table], d.outbox, async () => {
+    await (d[table] as Table<TableRows[K], string>).put(full)
+    await d.outbox.put({ key: `${table}:${full.id}`, table, id: full.id })
   })
   return full
 }
 
 /** Borrado lógico (se propaga por sync). */
-export async function remove<K extends SyncTable>(table: K, id: string) {
-  const t = db[table] as Table<TableRows[K], string>
-  const row = await t.get(id)
-  if (row) await save(table, { ...row, deletedAt: Date.now() } as unknown as Input<K>)
+export async function removeFrom<K extends SyncTable>(d: GymDB, table: K, id: string) {
+  const row = await (d[table] as Table<TableRows[K], string>).get(id)
+  if (row) await saveTo(d, table, { ...row, deletedAt: Date.now() } as unknown as Input<K>)
 }
+
+export const save = <K extends SyncTable>(table: K, row: Input<K>) => saveTo(db, table, row)
+export const remove = <K extends SyncTable>(table: K, id: string) => removeFrom(db, table, id)
 
 export const alive = <T extends { deletedAt: number | null }>(r: T) => !r.deletedAt
