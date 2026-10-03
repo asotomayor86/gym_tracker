@@ -39,3 +39,39 @@ describe('exerciseGuides', () => {
     for (const [name, primary] of SEED) expect(findGuide(name)?.primary, name).toContain(primary)
   })
 })
+
+// Espejo de las constantes de skeleton() en ExerciseDiagram.tsx: el punto que se anima (mano/pie)
+// debe quedar dentro del alcance del brazo (51 px) o la pierna (78 px) sin hiperextender ni plegarse del todo.
+type P = [number, number]
+const FLOOR = 156, TORSO = 50
+const rootOf = (pose: string, backAngle: number, leg: boolean): P => {
+  const r = (backAngle * Math.PI) / 180
+  const up: P = [-Math.sin(r), -Math.cos(r)]
+  let hip: P, sh: P
+  switch (pose) {
+    case 'tumbado': hip = [92, 118]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
+    case 'prono': hip = [100, 118]; sh = [hip[0] + TORSO, hip[1]]; break
+    case 'de-pie': hip = [104, FLOOR - 75]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
+    case 'colgado': sh = [108, 32]; hip = [108, 32 + TORSO]; break
+    default: hip = [92, FLOOR - 36]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]
+  }
+  return leg ? hip : sh
+}
+
+describe('alcance del rig', () => {
+  it('from/via/to quedan dentro del alcance, sin estirar ni plegar del todo la extremidad', () => {
+    for (const x of GUIDES) {
+      const d = x.diagram
+      const leg = d.limb === 'pierna'
+      const root = rootOf(d.pose, d.backAngle, leg)
+      const reach = leg ? 78 : 51
+      const px = ([a, b]: P): P => [20 + a * 180, FLOOR - b * 150]
+      const pts = [d.from, ...(d.via ? [d.via] : []), d.to].map((q) => px(q as P))
+      for (const q of pts) {
+        const ratio = Math.hypot(q[0] - root[0], q[1] - root[1]) / reach
+        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(0.96)
+        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeGreaterThanOrEqual(0.15)
+      }
+    }
+  })
+})
