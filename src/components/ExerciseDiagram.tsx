@@ -204,11 +204,11 @@ export default function ExerciseDiagram({
   if (d.pose === 'colgado') {
     const pull = d.motion === 'tiron'
     const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
-    const bodyAt = (q: number): P => [H[0], pull ? H[1] + 50 - 34 * q : H[1] - 20 - 34 * q]
+    const bodyAt = (q: number): P => [pull ? H[0] - 12 : H[0], pull ? H[1] + 58 - 34 * q : H[1] - 20 - 34 * q]
     const chest = (q: number): P => add(bodyAt(q), [13, 14])
     const sh = bodyAt(p)
     const hip: P = [sh[0], sh[1] + TORSO]
-    const ankle: P = [hip[0] - 10, hip[1] + 34]
+    const ankle: P = [hip[0] - 10, Math.min(hip[1] + 34, FLOOR - 4)]
     s = { shoulder: sh, hip, ankle, knee: ik(hip, ankle, THIGH, SHIN, forward).mid, up: [0, -1] }
     A = chest(0); B = chest(1); V = null; cur = chest(p)
     armTarget = H
@@ -248,8 +248,15 @@ export default function ExerciseDiagram({
     const fvAt = (q: number) => rot(f0, (40 * Math.PI / 180) * q)
     const ankleAt = (q: number): P => [toe[0] - fvAt(q)[0] * 11, toe[1] - fvAt(q)[1] * 11]
     footVec = fvAt(p)
-    calfLeg = ik(s.hip, ankleAt(p), THIGH, SHIN, forward, 0.985)
-    A = ankleAt(0); B = ankleAt(1); V = null; cur = calfLeg.end
+    if (d.pose === 'sentado-reclinado') {
+      // Prensa: pierna rígida (rodilla constante); solo gira el pie sobre el tobillo.
+      const toeAt = (q: number): P => add(rest.end, [fvAt(q)[0] * 11, fvAt(q)[1] * 11])
+      calfLeg = rest
+      A = toeAt(0); B = toeAt(1); V = null; cur = toeAt(p)
+    } else {
+      calfLeg = ik(s.hip, ankleAt(p), THIGH, SHIN, forward, 0.985)
+      A = ankleAt(0); B = ankleAt(1); V = null; cur = calfLeg.end
+    }
   }
   // Brazo que no trabaja: cuelga (o agarra el asa en prono / la barra en sentadilla), sin atravesar suelo ni banco.
   const staticArm: P = d.pose === 'prono' ? [10, 14] : squat ? [4, -4] : [14, Math.min(40, FLOOR - 4 - s.shoulder[1])]
