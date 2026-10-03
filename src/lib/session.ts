@@ -1,0 +1,27 @@
+import { alive, db, save } from '../db/db'
+import { getPrefs } from './prefs'
+import { suggestNext } from './progression'
+import { lastSessionSets } from './stats'
+import { fromKg, roundTo } from './units'
+
+/** Crea una sesión desde una rutina con las series precargadas con la sugerencia de progresión. */
+export async function startSession(templateId: string): Promise<string> {
+  const { unit, incrementKg } = getPrefs()
+  const items = await db.templateExercises.where('templateId').equals(templateId).filter(alive).sortBy('position')
+  const allLogs = await db.setLogs.filter(alive).toArray()
+  const session = await save('sessions', { templateId, startedAt: Date.now(), endedAt: null, notes: '' })
+
+  for (const item of items) {
+    const suggestion = suggestNext(lastSessionSets(allLogs, item.exerciseId), { incrementKg })
+    const weightKg = suggestion?.weightKg ?? item.targetWeightKg
+    const reps = suggestion?.reps ?? item.targetReps
+    for (let i = 0; i < item.targetSets; i++) {
+      await save('setLogs', {
+        sessionId: session.id, exerciseId: item.exerciseId, setIndex: i, reps, weightKg,
+        inputUnit: unit, inputWeight: roundTo(fromKg(weightKg, unit), 0.5),
+        effort: null, completedAt: null,
+      })
+    }
+  }
+  return session.id
+}
