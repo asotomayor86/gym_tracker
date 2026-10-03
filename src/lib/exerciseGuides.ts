@@ -1,4 +1,4 @@
-import type { Difficulty, ExerciseCategory, ExerciseGuide, Implement, MotionKind, Point, Pose } from './guideTypes'
+import type { Difficulty, ExerciseCategory, ExerciseGuide, Implement, MotionKind, Point, Pose, Tempo } from './guideTypes'
 import type { MuscleGroup } from './types'
 
 /**
@@ -978,7 +978,7 @@ const MOTION: Record<string, Motion> = {
   'Crunch en polea': { steps: CRUNCH, from: [0.533, 0.927], to: [0.6, 0.687] },
 }
 
-export const GUIDES: ExerciseGuide[] = BASE.map((x) => {
+const MERGED: ExerciseGuide[] = BASE.map((x) => {
   const m = MOTION[x.key]
   if (!m) return x
   const { steps, via, from, to, limb, elbow } = m
@@ -993,6 +993,49 @@ export const GUIDES: ExerciseGuide[] = BASE.map((x) => {
       ...(limb && { limb }),
       ...(elbow && { elbow }),
     },
+  }
+})
+
+/**
+ * Fases de carga. Concéntrica = el músculo se acorta venciendo la carga; excéntrica = se alarga frenándola.
+ * `loadPhase` indica cuál mitad del ciclo from→to→from es la concéntrica. En el catálogo casi siempre es la
+ * ida; solo sentadilla y hack squat se animan de pie → abajo, donde bajar es la excéntrica.
+ * Ritmo habitual: concéntrica 1-2 s controlada, excéntrica 2-3 s (nunca caída libre), pausa breve en los extremos.
+ */
+const LOAD_ON_RETURN = new Set(['Hack squat', 'Sentadilla en multipower'])
+
+const TEMPO: Record<ExerciseCategory, Tempo> = {
+  empuje: { concentricS: 1.5, eccentricS: 3, pauseS: 0.5 },
+  tiron: { concentricS: 1.5, eccentricS: 3, pauseS: 1 },
+  pierna: { concentricS: 2, eccentricS: 3, pauseS: 0.5 },
+  aislamiento: { concentricS: 2, eccentricS: 3, pauseS: 1 },
+  core: { concentricS: 2, eccentricS: 3, pauseS: 1 },
+}
+
+const TEMPO_NOTE: Record<ExerciseCategory, string> = {
+  empuje: 'Empuja en ~1,5 s y vuelve en ~3 s controlando el peso; la vuelta nunca es una caída.',
+  tiron: 'Tira en ~1,5 s, aprieta 1 s y vuelve en ~3 s sin soltar la carga.',
+  pierna: 'Empuja en ~2 s y vuelve en ~3 s sin rebotar en los extremos.',
+  aislamiento: 'Contrae en ~2 s, aprieta 1 s y vuelve en ~3 s; la vuelta es la mitad del trabajo.',
+  core: 'Contrae en ~2 s, aprieta 1 s y vuelve en ~3 s, sin tirones.',
+}
+
+const TEMPO_OVERRIDE: Record<string, { tempo?: Tempo; note?: string }> = {
+  'Hack squat': { note: 'Baja en ~3 s controlando el peso y sube empujando en ~2 s; sin rebotar abajo.' },
+  'Sentadilla en multipower': { note: 'Baja en ~3 s controlando el peso y sube empujando en ~2 s; sin rebotar abajo.' },
+  'Hip thrust en máquina': { tempo: { concentricS: 2, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~2 s, aprieta el glúteo 1 s arriba y baja en ~3 s.' },
+  'Elevación de gemelos sentado': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s hasta estirar el gemelo; pausa 1 s en los extremos.' },
+  'Elevación de gemelos en prensa': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s hasta estirar el gemelo; pausa 1 s en los extremos.' },
+}
+
+export const GUIDES: ExerciseGuide[] = MERGED.map((x) => {
+  if (x.diagram.motion === 'isometrico') return x // sin fases: no hay concéntrica ni excéntrica
+  const o = TEMPO_OVERRIDE[x.key]
+  return {
+    ...x,
+    tempo: o?.tempo ?? TEMPO[x.category],
+    tempoNote: o?.note ?? TEMPO_NOTE[x.category],
+    diagram: { ...x.diagram, loadPhase: LOAD_ON_RETURN.has(x.key) ? 'vuelta' : 'ida' },
   }
 })
 

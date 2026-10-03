@@ -32,10 +32,24 @@ export interface MovementDiagram {
   via?: Point
   /** Hacia dónde apunta el codo (o la rodilla) del brazo animado: 'abajo' (por defecto) o 'arriba' (face pull, elevaciones laterales, pájaros…). */
   elbow?: 'abajo' | 'arriba'
+  /**
+   * Cuál de las dos mitades del ciclo from→(via)→to→from es la fase CONCÉNTRICA (el músculo se acorta
+   * venciendo la carga): 'ida' = from→to, 'vuelta' = to→from. Ausente = 'ida'. La otra mitad es la excéntrica
+   * (el músculo se alarga frenando la carga). No aplica a isométricos.
+   */
+  loadPhase?: 'ida' | 'vuelta'
   /** Extremidad que se mueve por from→to: 'brazo' (por defecto) o 'pierna' (prensa, extensión/curl de pierna, sentadilla…). */
   limb?: 'brazo' | 'pierna'
   /** Texto corto sobre el recorrido (p. ej. "Empuja hacia delante y arriba"). */
   caption?: string
+}
+
+/** Duración de cada fase del ciclo, en segundos. */
+export interface Tempo {
+  concentricS: number
+  eccentricS: number
+  /** Pausa en cada extremo del recorrido. */
+  pauseS?: number
 }
 
 export interface ExerciseGuide {
@@ -56,5 +70,9 @@ export interface ExerciseGuide {
   mistakes: string[]
   /** Etiquetas cortas (2-5 palabras) de la animación: [inicio, medio, final]. */
   steps?: [inicio: string, medio: string, final: string]
+  /** Ritmo recomendado (concéntrica más rápida que excéntrica). Ausente en isométricos. */
+  tempo?: Tempo
+  /** Frase breve para el usuario sobre el ritmo. */
+  tempoNote?: string
   diagram: MovementDiagram
 }

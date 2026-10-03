@@ -83,3 +83,32 @@ describe('codo alto', () => {
     expect(findGuide('Curl de bíceps en polea')?.diagram.elbow).toBeUndefined()
   })
 })
+
+describe('fases de carga y ritmo', () => {
+  it('loadPhase es válido y solo bajar en sentadilla/hack es excéntrica en la ida', () => {
+    for (const x of GUIDES) {
+      expect(['ida', 'vuelta'], x.key).toContain(x.diagram.loadPhase)
+      const squat = x.key === 'Hack squat' || x.key === 'Sentadilla en multipower'
+      expect(x.diagram.loadPhase, x.key).toBe(squat ? 'vuelta' : 'ida')
+    }
+  })
+
+  it('tempo: concéntrica 1-2,5 s y excéntrica 2-4 s (más lenta, nunca caída libre)', () => {
+    for (const x of GUIDES) {
+      expect(x.tempo, x.key).toBeDefined()
+      const t = x.tempo!
+      expect(t.concentricS >= 1 && t.concentricS <= 2.5, x.key).toBe(true)
+      expect(t.eccentricS >= 2 && t.eccentricS <= 4, x.key).toBe(true)
+      expect(t.eccentricS, x.key).toBeGreaterThan(t.concentricS)
+      expect((t.pauseS ?? 0) <= 2, x.key).toBe(true)
+      expect(x.tempoNote?.length, x.key).toBeGreaterThan(10)
+    }
+  })
+
+  it('los isométricos no tienen fases ni ritmo', () => {
+    for (const x of GUIDES.filter((g) => g.diagram.motion === 'isometrico')) {
+      expect(x.tempo, x.key).toBeUndefined()
+      expect(x.diagram.loadPhase, x.key).toBeUndefined()
+    }
+  })
+})
