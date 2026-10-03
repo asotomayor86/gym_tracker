@@ -281,24 +281,26 @@ const BASE: ExerciseGuide[] = [
 
   g('Elevación de gemelos sentado', 'aislamiento', 1, ['gemelo'], [], {
     setup: [
-      'Siéntate y coloca las almohadillas sobre los muslos, cerca de la rodilla.',
-      'Apoya la parte delantera de los pies en la plataforma.',
+      'Siéntate con las rodillas a unos 90° y baja las almohadillas sobre los muslos, cerca de la rodilla.',
+      'Apoya solo el antepié en la plataforma, con los talones fuera.',
       'Libera el seguro dejando los talones por debajo.',
     ],
     execution: [
-      'Baja los talones hasta notar el estiramiento.',
-      'Sube de puntillas todo lo que puedas.',
-      'Mantén un segundo arriba y baja despacio.',
+      'Mantén muslos y rodillas quietos.',
+      'Baja los talones hasta notar el estiramiento y pausa 1 s.',
+      'Extiende solo los tobillos para subir de puntillas.',
+      'Pausa 1 s arriba apretando el gemelo y baja despacio.',
     ],
     breathing: 'Espira al subir e inspira al bajar.',
     tips: [
-      'Usa un recorrido completo, es la clave en el gemelo.',
+      'Recorrido completo: es la clave en el gemelo.',
+      'Solo se mueve el tobillo.',
       'Pies rectos o ligeramente abiertos.',
     ],
     mistakes: [
       'Hacer rebotes cortos sin estiramiento.',
       'Subir con prisa sin pausa arriba.',
-      'Doblar la rodilla más de lo necesario.',
+      'Levantar los muslos o mover las rodillas.',
       'Apoyar solo el borde externo del pie.',
     ],
     diagram: d('sentado', 10, 'maquina', 'elevacion', [0.8, 0.2], [0.8, 0.28], 'Sube de puntillas'),
@@ -306,27 +308,31 @@ const BASE: ExerciseGuide[] = [
 
   g('Elevación de gemelos en prensa', 'aislamiento', 1, ['gemelo'], [], {
     setup: [
-      'Siéntate en la prensa con la espalda apoyada.',
-      'Coloca solo la parte delantera de los pies en el borde inferior de la plataforma.',
-      'Estira las piernas sin bloquear las rodillas y quita los seguros.',
+      'Siéntate en la prensa con la espalda y la cadera bien apoyadas.',
+      'Coloca solo el antepié en la parte baja de la plataforma, con los talones fuera.',
+      'Estira las piernas hasta dejar una ligera flexión de rodilla (5–10°) y quita los seguros.',
     ],
     execution: [
-      'Deja que los talones bajen estirando el gemelo.',
-      'Empuja con la punta de los pies para extender los tobillos.',
-      'Pausa un segundo arriba y vuelve despacio.',
+      'Mantén cadera y rodillas quietas, con las piernas casi rectas.',
+      'Deja bajar los talones hasta notar el estiramiento del gemelo.',
+      'Pausa 1 s abajo, sin rebotar.',
+      'Empuja con la punta de los pies extendiendo solo los tobillos.',
+      'Pausa 1 s arriba apretando el gemelo y baja despacio.',
     ],
     breathing: 'Espira al empujar e inspira al volver.',
     tips: [
-      'Mantén las rodillas casi estiradas todo el rato.',
+      'Solo se mueven los tobillos: cadera y rodillas no cambian.',
+      'Recorrido completo: estiramiento abajo y contracción arriba.',
       'Empieza con menos peso que en la prensa normal.',
     ],
     mistakes: [
-      'Flexionar las rodillas para empujar.',
+      'Bloquear las rodillas con la carga.',
+      'Flexionar y extender las rodillas para mover el peso.',
+      'Rebotar abajo en lugar de pausar en el estiramiento.',
+      'Acortar el recorrido sin estirar ni apretar.',
       'Apoyar los pies a medias y resbalar.',
-      'Rebotar abajo.',
-      'Bloquear las rodillas con carga.',
     ],
-    diagram: d('sentado-reclinado', 45, 'maquina', 'elevacion', [0.85, 0.5], [0.9, 0.55], 'Extiende los tobillos'),
+    diagram: d('sentado-reclinado', 45, 'maquina', 'elevacion', [0.85, 0.5], [0.9, 0.55], 'Extiende solo los tobillos'),
   }),
 
   // ───────────── Pecho ─────────────
@@ -946,8 +952,8 @@ const MOTION: Record<string, Motion> = {
   'Aductores en máquina': { steps: ['Piernas abiertas', 'Junta las piernas', 'Piernas juntas'], from: [0.689, 0.02], to: [0.622, 0.013], limb: 'pierna' },
   'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], from: [0.578, 0.127], to: [0.367, 0.033], limb: 'pierna' },
   'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.378, 0.127], to: [0.389, 0.233], limb: 'brazo' },
-  'Elevación de gemelos sentado': { steps: ['Talones abajo', 'Sube de puntillas', 'Máxima elevación'], from: [0.661, 0.0], to: [0.661, 0.04], limb: 'pierna' },
-  'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Empuja con la punta', 'Máxima elevación'], from: [0.678, 0.587], to: [0.689, 0.6], limb: 'pierna' },
+  'Elevación de gemelos sentado': { steps: ['Talones abajo', 'Sube de puntillas', 'Contracción máxima'], from: [0.661, 0.0], to: [0.661, 0.04], limb: 'pierna' },
+  'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Extiende los tobillos', 'Contracción máxima'], from: [0.706, 0.607], to: [0.7, 0.6], limb: 'pierna' },
 
   'Press de pecho en máquina': { steps: ['Codos flexionados', 'Empuja adelante', 'Brazos extendidos'], from: [0.474, 0.542], to: [0.613, 0.548] },
   'Press inclinado en máquina': { steps: ['Codos flexionados', 'Empuja adelante y arriba', 'Brazos extendidos'], from: [0.292, 0.449], to: [0.404, 0.676] },
@@ -1025,8 +1031,8 @@ const TEMPO_OVERRIDE: Record<string, { tempo?: Tempo; note?: string }> = {
   'Hack squat': { note: 'Baja en ~3 s controlando el peso y sube empujando en ~2 s; sin rebotar abajo.' },
   'Sentadilla en multipower': { note: 'Baja en ~3 s controlando el peso y sube empujando en ~2 s; sin rebotar abajo.' },
   'Hip thrust en máquina': { tempo: { concentricS: 2, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~2 s, aprieta el glúteo 1 s arriba y baja en ~3 s.' },
-  'Elevación de gemelos sentado': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s hasta estirar el gemelo; pausa 1 s en los extremos.' },
-  'Elevación de gemelos en prensa': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s hasta estirar el gemelo; pausa 1 s en los extremos.' },
+  'Elevación de gemelos sentado': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s; pausa 1 s abajo (estiramiento) y 1 s arriba (contracción).' },
+  'Elevación de gemelos en prensa': { tempo: { concentricS: 1.5, eccentricS: 3, pauseS: 1 }, note: 'Sube en ~1,5 s y baja en ~3 s; pausa 1 s abajo (estiramiento) y 1 s arriba (contracción).' },
 }
 
 export const GUIDES: ExerciseGuide[] = MERGED.map((x) => {

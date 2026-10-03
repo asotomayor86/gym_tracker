@@ -69,10 +69,23 @@ describe('alcance del rig', () => {
       const pts = [d.from, ...(d.via ? [d.via] : []), d.to].map((q) => px(q as P))
       for (const q of pts) {
         const ratio = Math.hypot(q[0] - root[0], q[1] - root[1]) / reach
-        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(0.99)
+        // gemelos: la pierna de reposo es casi recta (flexión de rodilla 5-10°) y solo gira el tobillo
+        const calf = leg && d.motion === 'elevacion' && d.pose === 'sentado-reclinado'
+        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(calf ? 1.0 : 0.99)
         expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeGreaterThanOrEqual(0.15)
       }
     }
+  })
+})
+
+describe('gemelos', () => {
+  it('en prensa la pierna parte casi recta y solo se mueve el tobillo', () => {
+    const g = findGuide('Elevación de gemelos en prensa')!
+    const hip: P = [92, FLOOR - 36]
+    const [fx, fy] = [20 + g.diagram.from[0] * 180, FLOOR - g.diagram.from[1] * 150]
+    expect(Math.hypot(fx - hip[0], fy - hip[1]) / 78).toBeGreaterThanOrEqual(0.99)
+    expect(g.execution.join(' ')).toMatch(/solo los tobillos/)
+    expect(g.steps?.[1]).toBe('Extiende los tobillos')
   })
 })
 
