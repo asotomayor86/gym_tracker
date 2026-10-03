@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'Gym Tracker',
         short_name: 'Gym',
         description: 'Seguimiento de entrenamientos',
-        theme_color: '#2563eb',
-        background_color: '#0b0b0d',
+        theme_color: '#15130f',
+        background_color: '#e8e3d8',
         display: 'standalone',
         start_url: '/',
         icons: [

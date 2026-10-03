@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, CommitInput, Page, card, inputCls } from '../components/ui'
+import { GuideToggle } from '../components/ExerciseGuideView'
+import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { fmtDate } from '../lib/labels'
 import { setPrefs, usePrefs } from '../lib/prefs'
@@ -11,10 +12,10 @@ import { EFFORT_LABELS, type Effort, type SetLog } from '../lib/types'
 import { formatWeight, fromKg, roundTo, toKg } from '../lib/units'
 
 const EFFORT_STYLE: Record<Effort, string> = {
-  easy_done: 'bg-green-600 border-green-600',
-  hard_done: 'bg-yellow-500 border-yellow-500',
-  failed_close: 'bg-orange-500 border-orange-500',
-  failed: 'bg-red-600 border-red-600',
+  easy_done: 'bg-e-easy text-paper',
+  hard_done: 'bg-e-hard text-ink',
+  failed_close: 'bg-e-close text-ink',
+  failed: 'bg-e-fail text-paper',
 }
 const EFFORTS = Object.keys(EFFORT_LABELS) as Effort[]
 
@@ -34,6 +35,7 @@ export default function SessionPage() {
   )
   if (!session || !logs || !allLogs || !exercises || !items) return <Page title="Sesión"><p>No encontrada.</p></Page>
 
+  const exById = new Map(exercises.map((e) => [e.id, e]))
   const exName = (eid: string) => exercises.find((e) => e.id === eid)?.name ?? 'Ejercicio'
   const position = (eid: string) => items.find((i) => i.exerciseId === eid)?.position ?? 1000
   const groups = [...new Set(logs.map((l) => l.exerciseId))].sort(
@@ -76,56 +78,68 @@ export default function SessionPage() {
 
   return (
     <Page
-      title={fmtDate(session.startedAt)}
+      title="Sesión"
+      eyebrow={`${fmtDate(session.startedAt)}${finished ? ' · cerrada' : ' · en curso'}`}
       actions={
-        <div className="flex gap-1 rounded-lg border border-zinc-300 dark:border-zinc-700 p-0.5">
+        <div className="flex border border-ink">
           {(['kg', 'lb'] as const).map((u) => (
-            <button key={u} onClick={() => setPrefs({ unit: u })} className={`px-3 min-h-10 rounded-md ${unit === u ? 'bg-blue-600 text-white' : ''}`}>
+            <button key={u} onClick={() => setPrefs({ unit: u })} className={`mono px-3 min-h-10 text-sm font-bold uppercase ${unit === u ? 'bg-ink text-paper' : ''}`}>
               {u}
             </button>
           ))}
         </div>
       }
     >
-      {groups.map((eid) => {
+      {groups.map((eid, gi) => {
         const sets = logs.filter((l) => l.exerciseId === eid).sort((a, b) => a.setIndex - b.setIndex)
         const sug = suggestNext(lastSessionSets(allLogs, eid, session.id), { incrementKg })
         return (
-          <section key={eid} className={`${card} p-3 space-y-2`}>
-            <div className="font-semibold">{exName(eid)}</div>
+          <section key={eid}>
+            <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-b-2 border-ink pb-1.5">
+              <span className="mono text-xs font-bold text-signal">{String(gi + 1).padStart(2, '0')}</span>
+              <h2 className="display min-w-0 flex-1 text-3xl">{exName(eid)}</h2>
+              {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
+            </div>
             {sug && (
-              <div className="text-xs text-zinc-500">
-                Sugerencia: {formatWeight(sug.weightKg, unit)} × {sug.reps} · {sug.reason}
+              <div className="mono mb-1 border-l-[3px] border-signal bg-surface px-3 py-1.5 text-xs">
+                <span className="text-mute">SUGERIDO </span>
+                <b>{formatWeight(sug.weightKg, unit)} × {sug.reps}</b>
+                <span className="text-mute"> · {sug.reason}</span>
               </div>
             )}
             {sets.map((l, i) => (
-              <div key={l.id} className="space-y-1.5 border-t border-zinc-100 dark:border-zinc-800 pt-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 text-sm text-zinc-500">{i + 1}</span>
-                  <CommitInput
-                    type="number" inputMode="decimal" aria-label="Peso" className={`${inputCls} text-center`}
-                    value={roundTo(fromKg(l.weightKg, unit), 0.5)}
-                    onCommit={(v) => {
-                      const w = parseFloat(v)
-                      if (Number.isFinite(w) && w >= 0) patchLog(l, { weightKg: toKg(w, unit), inputUnit: unit, inputWeight: w })
-                    }}
-                  />
-                  <span className="text-sm text-zinc-500">{unit}</span>
-                  <CommitInput
-                    type="number" inputMode="numeric" aria-label="Repeticiones" className={`${inputCls} text-center`}
-                    value={l.reps}
-                    onCommit={(v) => Number.isFinite(parseInt(v)) && patchLog(l, { reps: Math.max(0, parseInt(v)) })}
-                  />
-                  <span className="text-sm text-zinc-500">reps</span>
-                  <button aria-label="Quitar serie" className="px-2 text-zinc-400" onClick={() => remove('setLogs', l.id)}>✕</button>
+              <div key={l.id} className={`border-b border-hair py-3 ${isDone(l) ? 'bg-surface/70' : ''}`}>
+                <div className="flex items-end gap-3">
+                  <span className="mono w-6 pb-2 text-sm text-mute">{String(i + 1).padStart(2, '0')}</span>
+                  <label className="flex-1">
+                    <span className="eyebrow">{unit}</span>
+                    <CommitInput
+                      type="number" inputMode="decimal" aria-label="Peso" className={`${inputCls} mono text-center text-3xl font-bold`}
+                      value={roundTo(fromKg(l.weightKg, unit), 0.5)}
+                      onCommit={(v) => {
+                        const w = parseFloat(v)
+                        if (Number.isFinite(w) && w >= 0) patchLog(l, { weightKg: toKg(w, unit), inputUnit: unit, inputWeight: w })
+                      }}
+                    />
+                  </label>
+                  <span className="display pb-2 text-2xl text-mute">×</span>
+                  <label className="flex-1">
+                    <span className="eyebrow">reps</span>
+                    <CommitInput
+                      type="number" inputMode="numeric" aria-label="Repeticiones" className={`${inputCls} mono text-center text-3xl font-bold`}
+                      value={l.reps}
+                      onCommit={(v) => Number.isFinite(parseInt(v)) && patchLog(l, { reps: Math.max(0, parseInt(v)) })}
+                    />
+                  </label>
+                  <button aria-label="Quitar serie" className="pb-2 px-1 text-mute hover:text-e-fail" onClick={() => remove('setLogs', l.id)}>✕</button>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5 pl-8">
+                <div className="mt-2 grid grid-cols-4 gap-px border border-ink bg-ink pl-0 ml-9">
                   {EFFORTS.map((e) => (
                     <button
                       key={e}
                       onClick={() => setEffort(l, e)}
-                      className={`min-h-11 rounded-lg border text-sm font-medium ${
-                        l.effort === e ? `${EFFORT_STYLE[e]} text-white` : 'border-zinc-300 dark:border-zinc-700'
+                      className={`min-h-11 text-xs font-bold uppercase tracking-wider transition-colors ${
+                        l.effort === e ? EFFORT_STYLE[e] : 'bg-paper text-mute hover:text-ink'
                       }`}
                     >
                       {EFFORT_LABELS[e]}
@@ -134,19 +148,19 @@ export default function SessionPage() {
                 </div>
               </div>
             ))}
-            <Button variant="ghost" onClick={() => addSet(eid)}>+ Serie</Button>
+            <Button variant="ghost" className="mt-3 w-full" onClick={() => addSet(eid)}>+ Serie</Button>
           </section>
         )
       })}
 
       <select
-        className={inputCls}
+        className={`${inputCls} bg-paper`}
         value=""
         onChange={async (e) => e.target.value && addSet(e.target.value)}
       >
-        <option value="" className="text-black">+ Añadir ejercicio a la sesión…</option>
+        <option value="">+ Añadir ejercicio a la sesión…</option>
         {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map((e) => (
-          <option key={e.id} value={e.id} className="text-black">{e.name}</option>
+          <option key={e.id} value={e.id}>{e.name}</option>
         ))}
       </select>
 
@@ -174,13 +188,19 @@ function RestTimer({ until, onClose }: { until: number; onClose: () => void }) {
     if (left === 0) navigator.vibrate?.([200, 100, 200])
   }, [left])
 
+  const ready = left === 0
   return (
-    <div className="fixed bottom-20 md:bottom-6 inset-x-4 md:inset-x-auto md:right-6 z-30 flex items-center justify-between gap-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-4 py-3 shadow-lg">
-      <span>{left > 0 ? 'Descanso' : '¡A por la siguiente!'}</span>
-      <span className="text-2xl font-mono tabular-nums">
+    <div
+      className={`fixed bottom-20 md:bottom-6 inset-x-4 md:inset-x-auto md:right-6 md:w-80 z-30 flex items-center justify-between gap-4 border-2 border-ink px-4 py-3 ${
+        ready ? 'bg-signal text-on-signal' : 'bg-ink text-paper'
+      }`}
+    >
+      <span className="eyebrow !text-current opacity-70">{ready ? '¡Siguiente serie!' : 'Descanso'}</span>
+      <span className="mono text-4xl font-bold leading-none">
         {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
       </span>
       <button onClick={onClose} className="px-2 min-h-11" aria-label="Cerrar">✕</button>
     </div>
   )
 }
+

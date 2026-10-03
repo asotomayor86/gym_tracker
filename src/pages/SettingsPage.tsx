@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, CommitInput, Page, card, inputCls } from '../components/ui'
+import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
 import { db } from '../db/db'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { hasToken, login, logout, syncNow, useSyncState } from '../lib/sync'
@@ -22,17 +22,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <Page title="Ajustes">
-      <section className={`${card} p-4 space-y-3`}>
-        <h2 className="font-semibold">Preferencias</h2>
-        <label className="block text-sm">
+    <Page title="Ajustes" eyebrow="Preferencias y datos">
+      <section className="space-y-3">
+        <SectionTitle>Preferencias</SectionTitle>
+        <label className="eyebrow block">
           Unidad de peso
-          <select className={inputCls} value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as 'kg' | 'lb' })}>
-            <option value="kg" className="text-black">Kilos (kg)</option>
-            <option value="lb" className="text-black">Libras (lb)</option>
+          <select className={`${inputCls} bg-paper text-base normal-case tracking-normal text-ink`} value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as 'kg' | 'lb' })}>
+            <option value="kg">Kilos (kg)</option>
+            <option value="lb">Libras (lb)</option>
           </select>
         </label>
-        <label className="block text-sm">
+        <label className="eyebrow block">
           Incremento al progresar (kg)
           <CommitInput
             type="number" inputMode="decimal" value={prefs.incrementKg}
@@ -41,11 +41,11 @@ export default function SettingsPage() {
         </label>
       </section>
 
-      <section className={`${card} p-4 space-y-3`}>
-        <h2 className="font-semibold">Sincronización</h2>
+      <section className="space-y-3">
+        <SectionTitle>Sincronización</SectionTitle>
         {logged ? (
           <>
-            <p className="text-sm text-zinc-500">
+            <p className="mono text-xs text-mute">
               Estado: {sync.status}
               {sync.lastSync && ` · última: ${new Date(sync.lastSync).toLocaleTimeString()}`}
               {sync.error && ` · ${sync.error}`}
@@ -64,16 +64,16 @@ export default function SettingsPage() {
               try { await login(password); setPassword('') } catch (err) { setError(err instanceof Error ? err.message : 'Error') }
             }}
           >
-            <p className="text-sm text-zinc-500">Los datos funcionan sin conexión. Inicia sesión para sincronizar con la nube.</p>
+            <p className="mono text-xs text-mute">Los datos funcionan sin conexión. Inicia sesión para sincronizar con la nube.</p>
             <input className={inputCls} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-e-fail">{error}</p>}
             <Button type="submit" disabled={!password}>Entrar</Button>
           </form>
         )}
       </section>
 
-      <section className={`${card} p-4 space-y-2`}>
-        <h2 className="font-semibold">Copia de seguridad</h2>
+      <section className="space-y-2">
+        <SectionTitle>Copia de seguridad</SectionTitle>
         <Button variant="ghost" onClick={exportJson}>Exportar JSON</Button>
       </section>
     </Page>

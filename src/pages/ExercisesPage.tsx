@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { GuideToggle } from '../components/ExerciseGuideView'
 import { Button, CommitInput, MuscleSelect, Page, SectionTitle, card, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
@@ -41,12 +42,15 @@ export default function ExercisesPage() {
               editing === e.id ? (
                 <ExerciseForm key={e.id} exercise={e} onClose={() => setEditing(null)} />
               ) : (
-                <button key={e.id} onClick={() => setEditing(e.id)} className="block w-full border-b border-hair py-3 text-left hover:bg-surface">
-                  <div className="font-semibold">{e.name}</div>
-                  <div className="mono text-xs text-mute">
-                    {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
-                  </div>
-                </button>
+                <div key={e.id} className="flex flex-wrap items-center gap-2 border-b border-hair py-2 hover:bg-surface">
+                  <button onClick={() => setEditing(e.id)} className="min-w-0 flex-1 py-1 text-left">
+                    <div className="font-semibold">{e.name}</div>
+                    <div className="mono text-xs text-mute">
+                      {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
+                    </div>
+                  </button>
+                  <GuideToggle exercise={e} />
+                </div>
               ),
             )}
           </section>

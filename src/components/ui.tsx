@@ -2,19 +2,24 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react
 import { MUSCLE_LABELS } from '../lib/labels'
 import { MUSCLE_GROUPS, type MuscleGroup } from '../lib/types'
 
-export const card = 'rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
+export const card = 'bg-surface border border-ink'
 export const inputCls =
-  'w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 min-h-11 outline-none focus:border-blue-500'
+  'w-full rounded-none border-0 border-b-2 border-ink/30 bg-transparent px-1 py-2 min-h-11 outline-none focus:border-signal'
 
 export function Button({
   variant = 'primary', className = '', ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' }) {
   const styles = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-500',
-    ghost: 'border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    danger: 'text-red-600 border border-red-300 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950',
+    primary: 'bg-signal text-on-signal border border-ink hover:brightness-110 active:translate-y-px',
+    ghost: 'border border-ink hover:bg-ink hover:text-paper',
+    danger: 'border border-e-fail text-e-fail hover:bg-e-fail hover:text-paper',
   }[variant]
-  return <button {...props} className={`rounded-lg px-4 min-h-11 font-medium disabled:opacity-50 ${styles} ${className}`} />
+  return (
+    <button
+      {...props}
+      className={`px-4 min-h-11 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:pointer-events-none transition-colors ${styles} ${className}`}
+    />
+  )
 }
 
 /** Input no controlado: confirma el valor al salir del campo (evita saltos de cursor con Dexie). */
@@ -36,14 +41,32 @@ export function CommitInput({
   )
 }
 
-export function Page({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+export function Page({
+  title, eyebrow, actions, children,
+}: { title: string; eyebrow?: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-3xl p-4 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {actions}
-      </div>
-      {children}
+    <div className="mx-auto max-w-3xl px-4 pt-8 pb-6 md:px-8 md:pt-12">
+      <header className="mb-8 flex items-end justify-between gap-3 border-b-4 border-ink pb-3">
+        <div>
+          {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
+          <h1 className="display text-6xl md:text-7xl">{title}</h1>
+        </div>
+        {actions && <div className="pb-1">{actions}</div>}
+      </header>
+      <div className="rise space-y-8">{children}</div>
+    </div>
+  )
+}
+
+/** Cabecera de sección numerada, como el índice de un manual. */
+export function SectionTitle({ n, children, aside }: { n?: string; children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-ink pb-1.5">
+      <h2 className="flex items-baseline gap-2.5">
+        {n && <span className="mono text-xs text-signal font-bold">{n}</span>}
+        <span className="display text-2xl">{children}</span>
+      </h2>
+      {aside && <span className="eyebrow">{aside}</span>}
     </div>
   )
 }
@@ -52,9 +75,9 @@ export function MuscleSelect({
   value, onChange,
 }: { value: MuscleGroup; onChange: (m: MuscleGroup) => void }) {
   return (
-    <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value as MuscleGroup)}>
+    <select className={`${inputCls} bg-surface`} value={value} onChange={(e) => onChange(e.target.value as MuscleGroup)}>
       {MUSCLE_GROUPS.map((m) => (
-        <option key={m} value={m} className="text-black">{MUSCLE_LABELS[m]}</option>
+        <option key={m} value={m}>{MUSCLE_LABELS[m]}</option>
       ))}
     </select>
   )

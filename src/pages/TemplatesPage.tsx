@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Page } from '../components/ui'
 import { alive, db, save } from '../db/db'
+import { seedTemplates } from '../lib/seed'
 
 export default function TemplatesPage() {
   const navigate = useNavigate()
@@ -29,6 +30,14 @@ export default function TemplatesPage() {
           </li>
         ))}
       </ul>
+      <Button
+        onClick={async () => {
+          const n = await seedTemplates()
+          alert(n ? `Se añadieron ${n} rutinas.` : 'Ya tienes las rutinas del listado.')
+        }}
+      >
+        Importar rutinas de máquina
+      </Button>
     </Page>
   )
 }

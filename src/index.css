@@ -1,24 +1,103 @@
 @import "tailwindcss";
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/jetbrains-mono";
 
+/* Sistema "libreta de taller": papel cálido, tinta, una sola señal naranja. */
 :root {
   color-scheme: light dark;
+  --paper: #e8e3d8;
+  --surface: #f3efe6;
+  --ink: #15130f;
+  --mute: #6d675a;
+  --hair: rgb(21 19 15 / 0.16);
+  --signal: #ff4a1c;
+  --on-signal: #15130f;
+  --e-easy: #4f8a4b;
+  --e-hard: #d9a21b;
+  --e-close: #e8742a;
+  --e-fail: #c8362b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0d0c0a;
+    --surface: #171612;
+    --ink: #ece7da;
+    --mute: #8c8677;
+    --hair: rgb(236 231 218 / 0.14);
+    --signal: #ff5a2b;
+    --e-easy: #6dae68;
+    --e-hard: #e5b43a;
+    --e-close: #f0843a;
+    --e-fail: #e2483c;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-hair: var(--hair);
+  --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+  --color-e-easy: var(--e-easy);
+  --color-e-hard: var(--e-hard);
+  --color-e-close: var(--e-close);
+  --color-e-fail: var(--e-fail);
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 }
 
 body {
   margin: 0;
-  background: #f4f4f5;
-  color: #18181b;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #0b0b0d;
-    color: #f4f4f5;
-  }
+/* Grano de papel muy sutil: evita el fondo plano "de plantilla". */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: radial-gradient(var(--hair) 0.6px, transparent 0.7px);
+  background-size: 14px 14px;
 }
 
-input, select, textarea {
-  font: inherit;
+/* Tipografía de cartel: Archivo en su ancho más estrecho y pesado. */
+.display {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  line-height: 0.88;
 }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+input, select, textarea { font: inherit; border-radius: 0; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* Entrada escalonada de bloques */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise > * { animation: rise 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.rise > *:nth-child(2) { animation-delay: 0.04s; }
+.rise > *:nth-child(3) { animation-delay: 0.08s; }
+.rise > *:nth-child(4) { animation-delay: 0.12s; }
+.rise > *:nth-child(5) { animation-delay: 0.16s; }
+@media (prefers-reduced-motion: reduce) { .rise > * { animation: none; } }
