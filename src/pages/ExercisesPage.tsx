@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Button, CommitInput, MuscleSelect, Page, card, inputCls } from '../components/ui'
+import { Button, CommitInput, MuscleSelect, Page, SectionTitle, card, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { seedExercises } from '../lib/seed'
@@ -23,27 +23,27 @@ export default function ExercisesPage() {
   }
 
   return (
-    <Page title="Ejercicios" actions={<Button onClick={add}>+ Nuevo</Button>}>
-      <input className={inputCls} placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} />
+    <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={<Button onClick={add}>+ Nuevo</Button>}>
+      <input className={`${inputCls} text-lg`} placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} />
       {exercises.length === 0 && (
         <div className={`${card} p-4 space-y-3`}>
           <p>Aún no tienes ejercicios.</p>
-          <Button onClick={seedExercises}>Cargar ejercicios de ejemplo</Button>
+          <Button onClick={() => seedExercises()}>Importar ejercicios de máquina</Button>
         </div>
       )}
       {MUSCLE_GROUPS.map((m) => {
         const list = shown.filter((e) => e.primaryMuscle === m)
         if (!list.length) return null
         return (
-          <section key={m} className="space-y-2">
-            <h2 className="text-sm font-semibold uppercase text-zinc-500">{MUSCLE_LABELS[m]}</h2>
+          <section key={m}>
+            <SectionTitle aside={String(list.length)}>{MUSCLE_LABELS[m]}</SectionTitle>
             {list.map((e) =>
               editing === e.id ? (
                 <ExerciseForm key={e.id} exercise={e} onClose={() => setEditing(null)} />
               ) : (
-                <button key={e.id} onClick={() => setEditing(e.id)} className={`${card} w-full p-3 text-left`}>
-                  <div className="font-medium">{e.name}</div>
-                  <div className="text-sm text-zinc-500">
+                <button key={e.id} onClick={() => setEditing(e.id)} className="block w-full border-b border-hair py-3 text-left hover:bg-surface">
+                  <div className="font-semibold">{e.name}</div>
+                  <div className="mono text-xs text-mute">
                     {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
                   </div>
                 </button>
@@ -52,6 +52,16 @@ export default function ExercisesPage() {
           </section>
         )
       })}
+      {exercises.length > 0 && (
+        <Button
+          onClick={async () => {
+            const n = await seedExercises()
+            alert(n ? `Se añadieron ${n} ejercicios.` : 'Ya tienes todos los ejercicios del listado.')
+          }}
+        >
+          Importar ejercicios de máquina
+        </Button>
+      )}
     </Page>
   )
 }
@@ -66,27 +76,27 @@ function ExerciseForm({ exercise: e, onClose }: { exercise: Exercise; onClose: (
     })
 
   return (
-    <div className={`${card} p-3 space-y-3 border-blue-500`}>
+    <div className={`${card} space-y-3 p-3 !border-signal`}>
       <CommitInput value={e.name} onCommit={(v) => update({ name: v.trim() || e.name })} placeholder="Nombre" />
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-sm">
+        <label className="eyebrow">
           Grupo principal
           <MuscleSelect value={e.primaryMuscle} onChange={(m) => update({ primaryMuscle: m })} />
         </label>
-        <label className="text-sm">
+        <label className="eyebrow">
           Material
           <CommitInput value={e.equipment} onCommit={(v) => update({ equipment: v })} />
         </label>
       </div>
       <div>
-        <div className="text-sm mb-1">Grupos secundarios</div>
+        <div className="eyebrow mb-1.5">Grupos secundarios</div>
         <div className="flex flex-wrap gap-2">
           {MUSCLE_GROUPS.filter((m) => m !== e.primaryMuscle).map((m) => (
             <button
               key={m}
               onClick={() => toggleSecondary(m)}
-              className={`rounded-full px-3 py-1 text-sm border ${
-                e.secondaryMuscles.includes(m) ? 'bg-blue-600 text-white border-blue-600' : 'border-zinc-300 dark:border-zinc-700'
+              className={`border border-ink px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                e.secondaryMuscles.includes(m) ? 'bg-ink text-paper' : 'text-mute hover:text-ink'
               }`}
             >
               {MUSCLE_LABELS[m]}

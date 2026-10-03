@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Page, card } from '../components/ui'
+import { Button, Page } from '../components/ui'
 import { alive, db, save } from '../db/db'
 
 export default function TemplatesPage() {
@@ -15,14 +15,20 @@ export default function TemplatesPage() {
   }
 
   return (
-    <Page title="Rutinas" actions={<Button onClick={add}>+ Nueva</Button>}>
-      {templates.length === 0 && <p className="text-zinc-500">Crea una rutina y añade ejercicios con series y repeticiones objetivo.</p>}
-      {templates.map((t) => (
-        <Link key={t.id} to={`/templates/${t.id}`} className={`${card} block p-4`}>
-          <div className="font-semibold">{t.name}</div>
-          <div className="text-sm text-zinc-500">{items.filter((i) => i.templateId === t.id).length} ejercicios</div>
-        </Link>
-      ))}
+    <Page title="Rutinas" eyebrow={`${templates.length} guardadas`} actions={<Button onClick={add}>+ Nueva</Button>}>
+      {templates.length === 0 && <p className="text-mute">Crea una rutina y añade ejercicios con series y repeticiones objetivo.</p>}
+      <ul>
+        {templates.map((t, i) => (
+          <li key={t.id}>
+            <Link to={`/templates/${t.id}`} className="group flex items-center gap-4 border-b border-hair py-4 hover:bg-surface">
+              <span className="mono w-6 text-sm text-mute">{String(i + 1).padStart(2, '0')}</span>
+              <span className="display flex-1 text-4xl">{t.name}</span>
+              <span className="mono text-sm text-mute">{items.filter((x) => x.templateId === t.id).length} ej.</span>
+              <span className="display text-2xl transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Page>
   )
 }
