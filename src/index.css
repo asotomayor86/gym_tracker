@@ -29,7 +29,7 @@
   --blob-hot: #ffb000;
   --blob-op: 0.85;
   /* Androide (placas biseladas): acero frío y ámbar sobre los músculos trabajados */
-  --a-inner: #0d1217; --a-inner-rim: rgb(160 176 190 / 0.55); --a-cable: #2b353f; --a-cable-hi: rgb(170 186 200 / 0.22);
+  --a-inner: #1d2731; --a-inner-rim: rgb(160 176 190 / 0.55); --a-cable: #2b353f; --a-cable-hi: rgb(170 186 200 / 0.22);
   --a-m0: #f2f7fa; --a-m1: #b3c0cb; --a-m2: #74828f; --a-m3: #313b45; --a-line: rgb(0 0 0 / 0.6); --a-spec: rgb(255 255 255 / 0.55);
   --a-amb-rim: #fff3d0; --a-amb-hi: #ffc53d; --a-amb-mid: #ffb000; --a-amb-lo: #8c4f00; --a-glow: rgb(255 176 0 / 0.55);
   --a-pad: #39424a; --a-pad-hi: #566370; --a-guide: rgb(238 242 244 / 0.5); --a-shadow: rgb(0 0 0 / 0.55);

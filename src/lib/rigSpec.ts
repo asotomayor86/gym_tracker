@@ -3,8 +3,8 @@
  * Solo constantes y posiciones base por pose: la usan el rig (ExerciseDiagram), los datos de las fichas
  * (exerciseGuides) y el test de alcance, para que todos trabajen con los mismos números.
  *
- * Fisionomía: adulto atlético de ~7,1 cabezas, H ≈ 162 px (ficha antropométrica de PREPARADOR: Drillis & Contini,
- * Winter). Coordenadas SVG: x hacia delante, y hacia abajo; el humanoide mira hacia +x.
+ * Fisionomía: androide atlético de ~6,4 cabezas, H ≈ 160 px, medido sobre la imagen de referencia (cadera al 53 %,
+ * rodilla al 28 %, tobillo al 4 % de la altura; torso corto, piernas largas). Coordenadas SVG: x hacia delante, y hacia abajo; el humanoide mira hacia +x.
  * El lienzo pasa de 220×170 (suelo en y = 156) a 220×179 (suelo en y = 168).
  */
 
@@ -12,16 +12,16 @@ export const CANVAS = { w: 220, h: 179, floor: 168 } as const
 
 /** Longitudes de segmento, articulación a articulación, en px. */
 export const SEG = {
-  head: 23, // barbilla–vértice (1 cabeza, ≈7,1 por altura)
-  neckVisible: 8, // acromion–barbilla
-  torso: 48, // hombro–cadera (≈0,30 H)
-  uarm: 30, // hombro–codo
-  farm: 23, // codo–muñeca
-  hand: 17, // muñeca–dedos
+  head: 25, // vértice–punta de la máscara (≈6,4 cabezas por altura, como la figura de referencia)
+  neckVisible: 9, // hombro–punta de la máscara
+  torso: 43, // hombro–cadera (≈0,27 H)
+  uarm: 26, // hombro–codo
+  farm: 22, // codo–muñeca
+  hand: 15, // muñeca–dedos
   thigh: 39, // cadera–rodilla
   shin: 39, // rodilla–tobillo
-  footLength: 24, // talón–puntera
-  ankleToToe: 18,
+  footLength: 22, // talón–puntera
+  ankleToToe: 17,
   ankleHeight: 6, // eje del tobillo sobre el suelo
 } as const
 
@@ -78,7 +78,7 @@ export const SPECIAL = {
   /** Brazo que no trabaja (ejercicios de pierna): objetivo relativo al hombro. */
   staticArm: { default: [14, 40], prono: [10, 14], squat: [4, -4] },
   /** Colgado: recorrido vertical del cuerpo y separación del hombro respecto a las manos. */
-  colgado: { rise: 32, pullStart: 50, dipStart: -20 },
+  colgado: { rise: 28, pullStart: 44, dipStart: -16 },
   /** Gemelos: plantarflexión máxima y radio del pedal. */
   calf: { maxPlantarflexionDeg: 40, toeLength: SEG.ankleToToe },
   /** Sentadilla: la cadera baja lo que sube el pie en el recorrido relativo from→to. */
@@ -86,4 +86,4 @@ export const SPECIAL = {
 } as const
 
 /** Androide (vistas frontal/posterior): semiancho entre ejes de hombro, cuello visible y centro de la cabeza sobre el hombro. */
-export const ANDROID = { shoulderHalf: 21, neck: 14, headCenter: 19.5 } as const
+export const ANDROID = { shoulderHalf: 21, neck: 9, headCenter: 21.5 } as const

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { ARM_REACH_TOTAL, CANVAS, LEG_REACH_TOTAL, SEAT, SEG, basePose, standingHipY, toNorm, toPx } from './rigSpec'
 
 describe('rigSpec', () => {
-  it('mantiene las proporciones de la ficha antropométrica', () => {
-    expect(ARM_REACH_TOTAL).toBe(53)
+  it('mantiene las proporciones medidas sobre la figura de referencia', () => {
+    expect(ARM_REACH_TOTAL).toBe(48)
     expect(LEG_REACH_TOTAL).toBe(78)
     expect(SEG.thigh).toBe(SEG.shin)
     const heightPx = SEG.ankleHeight + LEG_REACH_TOTAL * 0.985 + SEG.torso + SEG.neckVisible + SEG.head // hasta el vértice
-    expect(heightPx / SEG.head).toBeGreaterThan(6.9)
-    expect(heightPx / SEG.head).toBeLessThan(7.6)
+    expect(heightPx / SEG.head).toBeGreaterThan(6.2)
+    expect(heightPx / SEG.head).toBeLessThan(6.7)
   })
 
   it('deja el muslo horizontal en el asiento y el humanoide dentro del lienzo', () => {
