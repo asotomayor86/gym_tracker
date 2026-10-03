@@ -87,6 +87,35 @@ describe('planSeed', () => {
   })
 })
 
+describe('planSeed · migraciones y refresco', () => {
+  it('migra "Aductores en máquina" de cuadriceps a aductores si el usuario no lo cambió', () => {
+    const db: SeedRows = { ...EMPTY, exercises: [ex('uuid-a', 'Aductores en máquina', { primaryMuscle: 'cuadriceps', updatedAt: 50 })] }
+    const { migrate } = planSeed(SEED, db)
+    expect(migrate).toHaveLength(1)
+    expect(migrate[0]).toMatchObject({ id: 'uuid-a', primaryMuscle: 'aductores' })
+  })
+
+  it('respeta si el usuario lo puso en otro grupo, si está borrado o si ya migró', () => {
+    for (const p of [{ primaryMuscle: 'gluteo' as const }, { deletedAt: 9 }, { primaryMuscle: 'aductores' as const }]) {
+      const db: SeedRows = { ...EMPTY, exercises: [ex('uuid-a', 'Aductores en máquina', { updatedAt: 50, ...p })] }
+      expect(planSeed(SEED, db).migrate).toEqual([])
+    }
+  })
+
+  it('no migra por su cuenta el placeholder: lo refresca desde el catálogo (sin sync)', () => {
+    const old: SeedRows = { ...EMPTY, exercises: [ex('seed-ex-prensa', 'Prensa de piernas', { primaryMuscle: 'cuadriceps' })] }
+    const seed: SeedRows = { ...SEED, exercises: [ex('seed-ex-prensa', 'Prensa de piernas', { primaryMuscle: 'aductores' })] }
+    const plan = planSeed(seed, old)
+    expect(plan.migrate).toEqual([])
+    expect(plan.insert.exercises).toEqual([seed.exercises[0]])
+  })
+
+  it('no refresca semillas ya editadas por el usuario', () => {
+    const old: SeedRows = { ...EMPTY, exercises: [ex('seed-ex-prensa', 'Prensa de piernas', { updatedAt: 7, notes: 'mía' })] }
+    expect(planSeed(SEED, old).insert.exercises.map((e) => e.id)).toEqual(['seed-ex-curl'])
+  })
+})
+
 describe('norm', () => {
   it('ignora mayúsculas, tildes y espacios', () => {
     expect(norm('  Curl  de BÍCEPS ')).toBe('curl de biceps')

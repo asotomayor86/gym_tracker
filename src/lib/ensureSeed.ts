@@ -1,5 +1,6 @@
-import { db } from '../db/db'
+import { db, save } from '../db/db'
 import { buildSeedRows } from './seed'
+import type { Exercise } from './types'
 import { planSeed } from './seedPlan'
 
 let running: Promise<void> | null = null
@@ -14,6 +15,7 @@ export function ensureSeed(): Promise<void> {
 }
 
 async function doSeed() {
+  let migrate: Exercise[] = []
   const { exercises, workoutTemplates, templateExercises } = db
   await db.transaction('rw', exercises, workoutTemplates, templateExercises, async () => {
     const plan = planSeed(buildSeedRows(), {
@@ -21,6 +23,7 @@ async function doSeed() {
       workoutTemplates: await workoutTemplates.toArray(),
       templateExercises: await templateExercises.toArray(),
     })
+    migrate = plan.migrate
     await exercises.bulkDelete(plan.remove.exercises)
     await workoutTemplates.bulkDelete(plan.remove.workoutTemplates)
     await templateExercises.bulkDelete(plan.remove.templateExercises)
@@ -28,4 +31,6 @@ async function doSeed() {
     await workoutTemplates.bulkPut(plan.insert.workoutTemplates)
     await templateExercises.bulkPut(plan.insert.templateExercises)
   })
+  // Correcciones de datos del usuario: sí se encolan para sincronizar.
+  for (const row of migrate) await save('exercises', row)
 }

@@ -1,4 +1,4 @@
-import type { Exercise, TemplateExercise, WorkoutTemplate } from './types'
+import type { Exercise, MuscleGroup, TemplateExercise, WorkoutTemplate } from './types'
 
 export interface SeedRows {
   exercises: Exercise[]
@@ -7,9 +7,23 @@ export interface SeedRows {
 }
 
 export interface SeedPlan {
+  /** Filas a escribir sin encolar: semillas nuevas y semillas sin editar cuyo contenido cambió en el catálogo. */
   insert: SeedRows
+  /** Ejercicios del usuario a corregir y sincronizar (con save()): migraciones de grupo muscular. */
+  migrate: Exercise[]
   /** Ids de filas semilla locales (sin editar) que se descartan por duplicar datos que ya existen. */
   remove: Record<keyof SeedRows, string[]>
+}
+
+/** Ejercicios que cambiaron de grupo muscular principal: [nombre, grupo antiguo, grupo nuevo]. */
+const MUSCLE_MIGRATIONS: [name: string, from: MuscleGroup, to: MuscleGroup][] = [
+  ['Aductores en máquina', 'cuadriceps', 'aductores'],
+]
+
+const sameRow = (a: object, b: object) => {
+  const [x, y] = [a, b] as Record<string, unknown>[]
+  const keys = new Set([...Object.keys(x), ...Object.keys(y)])
+  return [...keys].every((k) => JSON.stringify(x[k]) === JSON.stringify(y[k]))
 }
 
 export const norm = (s: string) =>
@@ -51,6 +65,17 @@ export function planSeed(seed: SeedRows, existing: SeedRows): SeedPlan {
 
   // 2) Inserta las semillas que faltan.
   const insert: SeedRows = { exercises: [], workoutTemplates: [], templateExercises: [] }
+  // Semillas sin editar (updatedAt 1) cuyo contenido cambió en el catálogo: se refrescan en local.
+  const refresh = <T extends { id: string; updatedAt: number }>(rows: T[], seedRows: T[], out: T[]) => {
+    const current = new Map(rows.map((r) => [r.id, r]))
+    for (const s of seedRows) {
+      const c = current.get(s.id)
+      if (c && isPlaceholder(c) && !sameRow(c, s)) out.push(s)
+    }
+  }
+  refresh(exercises, seed.exercises, insert.exercises)
+  refresh(templates, seed.workoutTemplates, insert.workoutTemplates)
+  refresh(tes, seed.templateExercises, insert.templateExercises)
   const exById = new Map(exercises.map((e) => [e.id, e]))
   const exByName = new Map(exercises.map((e) => [norm(e.name), e]))
   const exEffective = new Map<string, Exercise>() // id semilla -> fila real que lo representa
@@ -85,5 +110,14 @@ export function planSeed(seed: SeedRows, existing: SeedRows): SeedPlan {
     insert.templateExercises.push({ ...s, exerciseId: ex.id })
   }
 
-  return { insert, remove }
+  // 3) Migra ejercicios del usuario (ya editados o importados con id aleatorio) que siguen en el grupo antiguo.
+  const migrate: Exercise[] = []
+  for (const [name, from, to] of MUSCLE_MIGRATIONS) {
+    for (const e of exercises) {
+      if (isPlaceholder(e) || e.deletedAt || norm(e.name) !== norm(name) || e.primaryMuscle !== from) continue
+      migrate.push({ ...e, primaryMuscle: to, secondaryMuscles: e.secondaryMuscles.filter((m) => m !== to) })
+    }
+  }
+
+  return { insert, migrate, remove }
 }

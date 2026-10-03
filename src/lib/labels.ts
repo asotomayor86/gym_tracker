@@ -8,6 +8,7 @@ export const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   triceps: 'Tríceps',
   antebrazo: 'Antebrazo',
   cuadriceps: 'Cuádriceps',
+  aductores: 'Aductores',
   isquios: 'Isquios',
   gluteo: 'Glúteo',
   gemelo: 'Gemelo',

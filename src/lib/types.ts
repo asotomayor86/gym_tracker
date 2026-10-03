@@ -11,7 +11,7 @@ export const EFFORT_LABELS: Record<Effort, string> = {
 
 export const MUSCLE_GROUPS = [
   'pecho', 'espalda', 'hombro', 'biceps', 'triceps', 'antebrazo',
-  'cuadriceps', 'isquios', 'gluteo', 'gemelo', 'core',
+  'cuadriceps', 'aductores', 'isquios', 'gluteo', 'gemelo', 'core',
 ] as const
 export type MuscleGroup = (typeof MUSCLE_GROUPS)[number]
 
