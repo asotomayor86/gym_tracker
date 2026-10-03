@@ -1,5 +1,7 @@
-import { alive, db, save } from '../db/db'
-import type { MuscleGroup } from './types'
+import type { SeedRows } from './seedPlan'
+import type { Exercise, MuscleGroup, TemplateExercise, WorkoutTemplate } from './types'
+
+export type { SeedRows }
 
 type Seed = [name: string, primary: MuscleGroup, secondary: MuscleGroup[], equipment: string]
 
@@ -54,20 +56,6 @@ export const SEED: Seed[] = [
   ['Crunch en polea', 'core', [], 'Polea'],
 ]
 
-/** Importa los ejercicios que aún no existan (por nombre). Devuelve cuántos añadió. */
-export async function seedExercises(): Promise<number> {
-  const existing = new Set(
-    (await db.exercises.filter(alive).toArray()).map((e) => e.name.trim().toLowerCase()),
-  )
-  let added = 0
-  for (const [name, primaryMuscle, secondaryMuscles, equipment] of SEED) {
-    if (existing.has(name.toLowerCase())) continue
-    await save('exercises', { name, primaryMuscle, secondaryMuscles, equipment, notes: '' })
-    added++
-  }
-  return added
-}
-
 // [ejercicio, series, repeticiones, descanso en s]. Series de 12-15 reps y descansos cortos
 // para mantener el pulso alto (objetivo: gasto calórico con fuerza).
 type TemplateSeed = { name: string; items: [exercise: string, sets: number, reps: number, restS: number][] }
@@ -103,24 +91,65 @@ const TEMPLATES: TemplateSeed[] = [
   },
 ]
 
-/** Crea las rutinas de ejemplo (importando antes los ejercicios que falten). */
-export async function seedTemplates(): Promise<number> {
-  await seedExercises()
-  const byName = new Map((await db.exercises.filter(alive).toArray()).map((e) => [e.name, e.id]))
-  const existing = new Set((await db.workoutTemplates.filter(alive).toArray()).map((t) => t.name))
-  let added = 0
+/**
+ * Slugs antiguos de ejercicios o rutinas de seed renombrados: los IDs deben ser estables entre versiones,
+ * así que si cambias un nombre, añade aquí `nombre nuevo → slug antiguo`.
+ */
+const SLUG_OVERRIDES: Record<string, string> = {}
+
+/** Slug estable a partir del nombre: sin tildes, minúsculas, solo [a-z0-9] separados por guiones. */
+export function slugify(name: string): string {
+  return (
+    SLUG_OVERRIDES[name] ??
+    name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  )
+}
+
+export const seedExerciseId = (name: string) => `seed-ex-${slugify(name)}`
+export const seedTemplateId = (name: string) => `seed-tpl-${slugify(name)}`
+export const seedTemplateExerciseId = (templateName: string, position: number) =>
+  `seed-te-${slugify(templateName)}-${position}`
+
+/**
+ * Filas completas del catálogo de ejemplo, con IDs deterministas y `updatedAt = 1` (cualquier edición del
+ * usuario, con updatedAt = Date.now(), gana por LWW). Función pura: no toca la base de datos.
+ */
+export function buildSeedRows(): SeedRows {
+  const exercises: Exercise[] = SEED.map(([name, primaryMuscle, secondaryMuscles, equipment]) => ({
+    id: seedExerciseId(name),
+    updatedAt: 1,
+    deletedAt: null,
+    name,
+    primaryMuscle,
+    secondaryMuscles: [...secondaryMuscles],
+    equipment,
+    notes: '',
+  }))
+
+  const workoutTemplates: WorkoutTemplate[] = []
+  const templateExercises: TemplateExercise[] = []
   for (const t of TEMPLATES) {
-    if (existing.has(t.name)) continue
-    const tpl = await save('workoutTemplates', { name: t.name })
-    let position = 0
-    for (const [ex, targetSets, targetReps, restS] of t.items) {
-      const exerciseId = byName.get(ex)
-      if (!exerciseId) continue
-      await save('templateExercises', {
-        templateId: tpl.id, exerciseId, position: position++, targetSets, targetReps, targetWeightKg: 20, restS,
+    const templateId = seedTemplateId(t.name)
+    workoutTemplates.push({ id: templateId, updatedAt: 1, deletedAt: null, name: t.name })
+    t.items.forEach(([exercise, targetSets, targetReps, restS], position) => {
+      templateExercises.push({
+        id: seedTemplateExerciseId(t.name, position),
+        updatedAt: 1,
+        deletedAt: null,
+        templateId,
+        exerciseId: seedExerciseId(exercise),
+        position,
+        targetSets,
+        targetReps,
+        targetWeightKg: 20,
+        restS,
       })
-    }
-    added++
+    })
   }
-  return added
+  return { exercises, workoutTemplates, templateExercises }
 }
