@@ -914,7 +914,7 @@ const BASE: ExerciseGuide[] = [
 ]
 
 type Step3 = [string, string, string]
-interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna'; elbow?: 'abajo' | 'arriba' }
+interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna'; elbow?: 'abajo' | 'arriba'; view?: 'lateral' | 'frontal' }
 
 const CURL: Step3 = ['Brazos estirados', 'Flexiona los codos', 'Bíceps contraído']
 const ROW: Step3 = ['Brazos estirados', 'Tira de los codos', 'Escápulas juntas']
@@ -960,7 +960,7 @@ const MOTION: Record<string, Motion> = {
   'Elevaciones laterales en máquina': { steps: RAISE, elbow: 'arriba', from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519] },
   'Elevaciones laterales en polea': { steps: RAISE, elbow: 'arriba', from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78] },
   'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], elbow: 'arriba', from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505] },
-  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Manos junto a la cara'], from: [0.711, 0.86], to: [0.544, 0.9] },
+  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Manos junto a la cara'], view: 'frontal', from: [0.711, 0.86], to: [0.544, 0.9] },
 
   'Curl de bíceps en máquina': { steps: CURL, from: [0.43, 0.275], via: [0.518, 0.382], to: [0.452, 0.528] },
   'Curl de bíceps en polea': { steps: CURL, from: [0.511, 0.527], via: [0.633, 0.633], to: [0.567, 0.793] },
@@ -981,7 +981,7 @@ const MOTION: Record<string, Motion> = {
 const MERGED: ExerciseGuide[] = BASE.map((x) => {
   const m = MOTION[x.key]
   if (!m) return x
-  const { steps, via, from, to, limb, elbow } = m
+  const { steps, via, from, to, limb, elbow, view } = m
   return {
     ...x,
     steps,
@@ -992,6 +992,7 @@ const MERGED: ExerciseGuide[] = BASE.map((x) => {
       ...(via && { via }),
       ...(limb && { limb }),
       ...(elbow && { elbow }),
+      ...(view && { view }),
     },
   }
 })

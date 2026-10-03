@@ -32,6 +32,8 @@ export interface MovementDiagram {
   via?: Point
   /** Hacia dónde apunta el codo (o la rodilla) del brazo animado: 'abajo' (por defecto) o 'arriba' (face pull, elevaciones laterales, pájaros…). */
   elbow?: 'abajo' | 'arriba'
+  /** Plano en el que se dibuja el movimiento: 'lateral' (por defecto) o 'frontal' (vista de frente: face pull con codos altos y abiertos). */
+  view?: 'lateral' | 'frontal'
   /**
    * Cuál de las dos mitades del ciclo from→(via)→to→from es la fase CONCÉNTRICA (el músculo se acorta
    * venciendo la carga): 'ida' = from→to, 'vuelta' = to→from. Ausente = 'ida'. La otra mitad es la excéntrica

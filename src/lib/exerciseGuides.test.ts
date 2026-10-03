@@ -82,6 +82,8 @@ describe('codo alto', () => {
       expect(findGuide(n)?.diagram.elbow, n).toBe('arriba')
     expect(findGuide('Face pull en polea')?.diagram.elbow).toBeUndefined()
     expect(findGuide('Curl de bíceps en polea')?.diagram.elbow).toBeUndefined()
+    expect(findGuide('Face pull en polea')?.diagram.view).toBe('frontal')
+    expect(findGuide('Jalón al pecho')?.diagram.view).toBeUndefined()
   })
 })
 
