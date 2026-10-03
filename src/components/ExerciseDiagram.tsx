@@ -51,7 +51,7 @@ function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
       knee = [hip[0] - THIGH, hip[1]]; ankle = [knee[0] - SHIN, knee[1]]
       break
     case 'de-pie':
-      hip = [104, FLOOR - 75]; ankle = [104, FLOOR]
+      hip = [104, FLOOR - 77]; ankle = [104, FLOOR]
       shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, forward).mid
       break
     case 'colgado':
@@ -204,7 +204,7 @@ export default function ExerciseDiagram({
   if (d.pose === 'colgado') {
     const pull = d.motion === 'tiron'
     const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
-    const bodyAt = (q: number): P => [H[0], pull ? H[1] + 50 - 34 * q : H[1] - 14 - 34 * q]
+    const bodyAt = (q: number): P => [H[0], pull ? H[1] + 50 - 34 * q : H[1] - 20 - 34 * q]
     const chest = (q: number): P => add(bodyAt(q), [13, 14])
     const sh = bodyAt(p)
     const hip: P = [sh[0], sh[1] + TORSO]
@@ -235,10 +235,28 @@ export default function ExerciseDiagram({
     s = { shoulder: add(base.shoulder, shift), hip, ankle: k.end, knee: k.mid, up: base.up }
   }
 
+  // Elevación de gemelos: cadera fija; el pie gira sobre el antepié (plantarflexión 0→40°) y la rodilla se resuelve por IK.
+  const calf = leg && d.motion === 'elevacion'
+  const rot = (v: P, a: number): P => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]
+  let footVec: P | null = null
+  let calfLeg: { mid: P; end: P } | null = null
+  if (calf) {
+    const rest = ik(s.hip, A, THIGH, SHIN, forward, 0.985)
+    const l0 = Math.hypot(rest.end[0] - rest.mid[0], rest.end[1] - rest.mid[1]) || 1
+    const f0: P = [(rest.end[1] - rest.mid[1]) / l0, -(rest.end[0] - rest.mid[0]) / l0]
+    const toe = add(rest.end, [f0[0] * 11, f0[1] * 11])
+    const fvAt = (q: number) => rot(f0, (40 * Math.PI / 180) * q)
+    const ankleAt = (q: number): P => [toe[0] - fvAt(q)[0] * 11, toe[1] - fvAt(q)[1] * 11]
+    footVec = fvAt(p)
+    calfLeg = ik(s.hip, ankleAt(p), THIGH, SHIN, forward, 0.985)
+    A = ankleAt(0); B = ankleAt(1); V = null; cur = calfLeg.end
+  }
+  // Brazo que no trabaja: cuelga (o agarra el asa en prono / la barra en sentadilla), sin atravesar suelo ni banco.
+  const staticArm: P = d.pose === 'prono' ? [10, 14] : squat ? [4, -4] : [14, Math.min(40, FLOOR - 4 - s.shoulder[1])]
   const arm = leg
-    ? ik(s.shoulder, add(s.shoulder, [14, 40]), UARM, FARM, lower)
-    : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, 0.95)
-  const lg = squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, d.pose === 'prono' ? lower : forward, 0.985) : { mid: s.knee, end: s.ankle }
+    ? ik(s.shoulder, add(s.shoulder, staticArm), UARM, FARM, lower)
+    : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, 0.98)
+  const lg = calfLeg ?? (squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, d.pose === 'prono' ? lower : forward, 0.985) : { mid: s.knee, end: s.ankle })
 
   const torso = seg(s.hip, s.shoulder, TORSO_PROF, -1)
   const neck = seg(s.shoulder, add(s.shoulder, [s.up[0] * 11, s.up[1] * 11]), NECK_PROF, -1)
@@ -246,7 +264,7 @@ export default function ExerciseDiagram({
   const thigh = seg(s.hip, lg.mid, THIGH_PROF)
   const shin = seg(lg.mid, lg.end, SHIN_PROF)
   const sl = Math.hypot(lg.end[0] - lg.mid[0], lg.end[1] - lg.mid[1]) || 1
-  const foot = seg(lg.end, add(lg.end, [((lg.end[1] - lg.mid[1]) / sl) * 11, (-(lg.end[0] - lg.mid[0]) / sl) * 11]), FOOT_PROF)
+  const foot = seg(lg.end, add(lg.end, footVec ? [footVec[0] * 11, footVec[1] * 11] : [((lg.end[1] - lg.mid[1]) / sl) * 11, (-(lg.end[0] - lg.mid[0]) / sl) * 11]), FOOT_PROF)
   const uarm = seg(s.shoulder, arm.mid, UARM_PROF)
   const farm = seg(arm.mid, arm.end, FARM_PROF)
 
@@ -286,12 +304,14 @@ export default function ExerciseDiagram({
   const bk: P = [-Math.cos((d.backAngle * Math.PI) / 180), Math.sin((d.backAngle * Math.PI) / 180)]
   const padA = add(s.hip, [bk[0] * 12 - s.up[0] * 4, bk[1] * 12 - s.up[1] * 4])
   const padB = add(s.shoulder, [bk[0] * 12 + s.up[0] * 14, bk[1] * 12 + s.up[1] * 14])
-  const armsFront = !leg && (d.motion === 'apertura' || d.motion === 'elevacion')
-  const lift = d.motion === 'elevacion'
+  const pull = !leg && d.view === 'frontal' && d.motion === 'tiron'
+  const armsFront = !leg && (d.motion === 'apertura' || d.motion === 'elevacion' || pull)
+  const lift = d.motion === 'elevacion' || pull
   const closing = B[0] > A[0]
-  const th0 = lift ? 12 : closing ? 92 : 14, th1 = lift ? 86 : closing ? 14 : 92
+  const th0 = pull ? 45 : lift ? 12 : closing ? 92 : 14, th1 = pull ? 90 : lift ? 86 : closing ? 14 : 92
   const theta = ((th0 + (th1 - th0) * p) * Math.PI) / 180
-  const th2 = theta - (lift ? 0.18 : 0.32 + 0.5 * (closing ? p : 1 - p))
+  // face pull: del agarre al frente (antebrazos hacia dentro) a codos altos con antebrazos verticales
+  const th2 = pull ? ((-70 + 240 * p) * Math.PI) / 180 : theta - (lift ? 0.18 : 0.32 + 0.5 * (closing ? p : 1 - p))
   const fArms = !armsFront ? [] : ([-1, 1] as const).map((sd) => {
     const sh: P = [110 + sd * 26, 50]
     const el = add(sh, [sd * Math.sin(theta) * UARM, Math.cos(theta) * UARM])
