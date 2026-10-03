@@ -914,7 +914,7 @@ const BASE: ExerciseGuide[] = [
 ]
 
 type Step3 = [string, string, string]
-interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna' }
+interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna'; elbow?: 'abajo' | 'arriba' }
 
 const CURL: Step3 = ['Brazos estirados', 'Flexiona los codos', 'Bíceps contraído']
 const ROW: Step3 = ['Brazos estirados', 'Tira de los codos', 'Escápulas juntas']
@@ -957,10 +957,10 @@ const MOTION: Record<string, Motion> = {
   'Fondos asistidos en máquina': { steps: ['Codos flexionados', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.533, 0.653], to: [0.489, 0.52] },
 
   'Press de hombros en máquina': { steps: ['Manos a los hombros', 'Empuja arriba', 'Brazos extendidos'], from: [0.431, 0.599], via: [0.42, 0.745], to: [0.409, 0.879] },
-  'Elevaciones laterales en máquina': { steps: RAISE, from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519] },
-  'Elevaciones laterales en polea': { steps: RAISE, from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78] },
-  'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505] },
-  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Codos altos atrás'], from: [0.711, 0.86], to: [0.544, 0.9] },
+  'Elevaciones laterales en máquina': { steps: RAISE, from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519], elbow: 'arriba' },
+  'Elevaciones laterales en polea': { steps: RAISE, from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78], elbow: 'arriba' },
+  'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505], elbow: 'arriba' },
+  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Codos altos atrás'], from: [0.711, 0.86], to: [0.544, 0.9], elbow: 'arriba' },
 
   'Curl de bíceps en máquina': { steps: CURL, from: [0.43, 0.275], via: [0.518, 0.382], to: [0.452, 0.528] },
   'Curl de bíceps en polea': { steps: CURL, from: [0.511, 0.527], via: [0.633, 0.633], to: [0.567, 0.793] },
@@ -981,7 +981,7 @@ const MOTION: Record<string, Motion> = {
 export const GUIDES: ExerciseGuide[] = BASE.map((x) => {
   const m = MOTION[x.key]
   if (!m) return x
-  const { steps, via, from, to, limb } = m
+  const { steps, via, from, to, limb, elbow } = m
   return {
     ...x,
     steps,
@@ -991,6 +991,7 @@ export const GUIDES: ExerciseGuide[] = BASE.map((x) => {
       ...(to && { to }),
       ...(via && { via }),
       ...(limb && { limb }),
+      ...(elbow && { elbow }),
     },
   }
 })

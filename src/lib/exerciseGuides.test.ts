@@ -75,3 +75,11 @@ describe('alcance del rig', () => {
     }
   })
 })
+
+describe('codo alto', () => {
+  it('face pull, laterales y pájaros llevan el codo arriba', () => {
+    for (const n of ['Face pull en polea', 'Elevaciones laterales en máquina', 'Elevaciones laterales en polea', 'Pájaros en peck deck (deltoides posterior)'])
+      expect(findGuide(n)?.diagram.elbow, n).toBe('arriba')
+    expect(findGuide('Curl de bíceps en polea')?.diagram.elbow).toBeUndefined()
+  })
+})

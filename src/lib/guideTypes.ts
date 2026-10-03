@@ -30,6 +30,8 @@ export interface MovementDiagram {
   to: Point
   /** Punto intermedio opcional del recorrido (sentadilla, remo, press de hombros, curls con arco…): from → via → to. */
   via?: Point
+  /** Hacia dónde apunta el codo (o la rodilla) del brazo animado: 'abajo' (por defecto) o 'arriba' (face pull, elevaciones laterales, pájaros…). */
+  elbow?: 'abajo' | 'arriba'
   /** Extremidad que se mueve por from→to: 'brazo' (por defecto) o 'pierna' (prensa, extensión/curl de pierna, sentadilla…). */
   limb?: 'brazo' | 'pierna'
   /** Texto corto sobre el recorrido (p. ej. "Empuja hacia delante y arriba"). */
