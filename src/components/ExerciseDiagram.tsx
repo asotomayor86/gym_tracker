@@ -21,10 +21,11 @@ const mix = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1
 const dist = (a: P, b: P) => Math.hypot(b[0] - a[0], b[1] - a[1])
 const str = (ps: P[]) => ps.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ')
 
-function ik(root: P, target: P, l1: number, l2: number, pick: (a: P, b: P) => P): { mid: P; end: P } {
+/** `reach`: fracción máxima de la longitud total (<1 deja siempre una ligera flexión de codo/rodilla). */
+function ik(root: P, target: P, l1: number, l2: number, pick: (a: P, b: P) => P, reach = 0.99): { mid: P; end: P } {
   let d = dist(root, target)
   const dir: P = d === 0 ? [1, 0] : [(target[0] - root[0]) / d, (target[1] - root[1]) / d]
-  d = Math.min(Math.max(d, Math.abs(l1 - l2) + 0.5), l1 + l2 - 0.5)
+  d = Math.min(Math.max(d, Math.abs(l1 - l2) + 0.5, (l1 + l2) * 0.32), (l1 + l2) * reach)
   const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
   const h = Math.sqrt(Math.max(0, l1 * l1 - a * a))
   const m: P = [root[0] + dir[0] * a, root[1] + dir[1] * a]
@@ -35,6 +36,7 @@ function ik(root: P, target: P, l1: number, l2: number, pick: (a: P, b: P) => P)
 }
 const lower = (a: P, b: P) => (a[1] > b[1] ? a : b)
 const forward = (a: P, b: P) => (a[0] > b[0] ? a : b)
+const higher = (a: P, b: P) => (a[1] < b[1] ? a : b)
 
 function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
   const r = (backAngle * Math.PI) / 180
@@ -94,7 +96,7 @@ function seg(a: P, b: P, prof: Prof, frontSign: 1 | -1 = 1) {
     if (side === 'back') return one(-1)
     return [...outer(1), ...outer(-1).reverse()]
   }
-  return { outline, band }
+  return { outline, band, edge, c }
 }
 
 const TORSO_PROF: Prof = [[0, 9.5], [0.35, 8.5], [0.75, 12], [1, 10]]
@@ -158,7 +160,7 @@ export default function ExerciseDiagram({
 
   // Colgado: las manos quedan fijas en la barra/asas y es el cuerpo el que sube (marca en el pecho).
   let armTarget: P | null = null
-  let armPick = lower
+  let armPick = d.elbow === 'arriba' ? higher : lower
   if (d.pose === 'colgado') {
     const pull = d.motion === 'tiron'
     const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
@@ -181,10 +183,22 @@ export default function ExerciseDiagram({
     s = { shoulder: S, hip, ankle: k.end, knee: k.mid, up: [(S[0] - hip[0]) / TORSO, (S[1] - hip[1]) / TORSO] }
   }
 
+  const squat = leg && d.motion === 'sentadilla'
+  if (squat) {
+    const A0 = A, hipOf = (c: P): P => [base.hip[0] + (A0[0] - c[0]), base.hip[1] + (A0[1] - c[1])]
+    const hip = hipOf(cur)
+    // la marca sigue a la cadera (lo que realmente baja), no al pie
+    const pathAt = (q: number): P => (V ? (q < 0.5 ? mix(A0, V, q * 2) : mix(V, B, (q - 0.5) * 2)) : mix(A0, B, q))
+    A = hipOf(pathAt(0)); B = hipOf(pathAt(1)); cur = hip; V = null
+    const shift: P = [hip[0] - base.hip[0], hip[1] - base.hip[1]]
+    const k = ik(hip, base.ankle, THIGH, SHIN, forward, 0.985)
+    s = { shoulder: add(base.shoulder, shift), hip, ankle: k.end, knee: k.mid, up: base.up }
+  }
+
   const arm = leg
     ? ik(s.shoulder, add(s.shoulder, [14, 40]), UARM, FARM, lower)
-    : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick)
-  const lg = leg ? ik(s.hip, cur, THIGH, SHIN, d.pose === 'prono' ? lower : forward) : { mid: s.knee, end: s.ankle }
+    : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, 0.95)
+  const lg = squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, d.pose === 'prono' ? lower : forward, 0.985) : { mid: s.knee, end: s.ankle }
 
   const torso = seg(s.hip, s.shoulder, TORSO_PROF, -1)
   const neck = seg(s.shoulder, add(s.shoulder, [s.up[0] * 11, s.up[1] * 11]), NECK_PROF, -1)
@@ -197,12 +211,21 @@ export default function ExerciseDiagram({
   const farm = seg(arm.mid, arm.end, FARM_PROF)
 
   const prim = new Set(primary), sec = new Set(secondary.filter((m) => !prim.has(m)))
+  // Pectoral y dorsal nacen en el tronco y se insertan en el húmero: se estiran con el brazo.
+  const pecPts: P[] = [
+    torso.edge(0.58, 0.9), torso.edge(0.78, 1), torso.edge(0.97, 0.9),
+    uarm.edge(0.1, 0.9), uarm.edge(0.42, 0.85), uarm.edge(0.42, 0.1), torso.edge(0.7, 0.1),
+  ]
+  const latPts: P[] = [
+    torso.edge(0.25, -0.9), torso.edge(0.55, -1), torso.edge(0.95, -0.9),
+    uarm.edge(0.1, -0.9), uarm.edge(0.4, -0.85), uarm.edge(0.4, -0.1), torso.edge(0.45, -0.1),
+  ]
   const muscles: { m: MuscleGroup; pts?: P[]; circle?: P }[] = [
-    { m: 'pecho', pts: torso.band(0.55, 0.96, 'front') },
+    { m: 'pecho', pts: pecPts },
     { m: 'core', pts: torso.band(0.08, 0.55, 'front') },
-    { m: 'espalda', pts: torso.band(0.3, 1, 'back') },
-    { m: 'gluteo', pts: torso.band(0, 0.2, 'back') },
-    { m: 'hombro', circle: s.shoulder },
+    { m: 'espalda', pts: latPts },
+    { m: 'gluteo', pts: [...torso.band(0, 0.2, 'back'), ...thigh.band(0.05, 0.3, 'back')] },
+    { m: 'hombro', circle: s.shoulder, pts: uarm.band(0, 0.45, 'both') },
     { m: 'biceps', pts: uarm.band(0.15, 0.92, 'front') },
     { m: 'triceps', pts: uarm.band(0.15, 0.92, 'back') },
     { m: 'antebrazo', pts: farm.band(0.05, 0.92, 'both') },
@@ -210,10 +233,11 @@ export default function ExerciseDiagram({
     { m: 'isquios', pts: thigh.band(0.2, 0.95, 'back') },
     { m: 'gemelo', pts: shin.band(0.05, 0.7, 'back') },
   ]
+  // El resalte "late": más intenso cuanto más cerca del punto de máximo esfuerzo.
   const mStyle = (m: MuscleGroup) =>
     prim.has(m)
-      ? { fill: 'var(--signal)', stroke: 'var(--ink)', strokeWidth: 0.8 }
-      : { fill: 'var(--signal)', fillOpacity: 0.32, stroke: 'var(--signal)', strokeWidth: 0.8 }
+      ? { fill: 'var(--signal)', fillOpacity: 0.5 + 0.5 * p, stroke: 'var(--ink)', strokeWidth: 0.8 }
+      : { fill: 'var(--signal)', fillOpacity: 0.16 + 0.2 * p, stroke: 'var(--signal)', strokeWidth: 0.8 }
 
   const body = { fill: 'color-mix(in srgb, var(--ink) 7%, var(--surface))', stroke: 'var(--ink)', strokeOpacity: 0.55, strokeWidth: 1, strokeLinejoin: 'round' as const }
   const mute = { stroke: 'var(--ink)', strokeOpacity: 0.28 }
@@ -222,6 +246,18 @@ export default function ExerciseDiagram({
   const bk: P = [-Math.cos((d.backAngle * Math.PI) / 180), Math.sin((d.backAngle * Math.PI) / 180)]
   const padA = add(s.hip, [bk[0] * 12 - s.up[0] * 4, bk[1] * 12 - s.up[1] * 4])
   const padB = add(s.shoulder, [bk[0] * 12 + s.up[0] * 14, bk[1] * 12 + s.up[1] * 14])
+  const armsFront = !leg && (d.motion === 'apertura' || d.motion === 'elevacion')
+  const lift = d.motion === 'elevacion'
+  const closing = B[0] > A[0]
+  const th0 = lift ? 12 : closing ? 92 : 14, th1 = lift ? 86 : closing ? 14 : 92
+  const theta = ((th0 + (th1 - th0) * p) * Math.PI) / 180
+  const th2 = theta - (lift ? 0.18 : 0.32 + 0.5 * (closing ? p : 1 - p))
+  const fArms = !armsFront ? [] : ([-1, 1] as const).map((sd) => {
+    const sh: P = [110 + sd * 26, 50]
+    const el = add(sh, [sd * Math.sin(theta) * UARM, Math.cos(theta) * UARM])
+    const hand = add(el, [sd * Math.sin(th2) * FARM, Math.cos(th2) * FARM])
+    return { sd, sh, el, hand, ua: seg(sh, el, UARM_PROF), fa: seg(el, hand, FARM_PROF) }
+  })
   const frontal = leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(B[1] - A[1]) < 2 && Math.abs(B[0] - A[0]) > 3
   const opening = B[0] > A[0]
   const kx = (opening ? 22 : 46) + ((opening ? 46 : 22) - (opening ? 22 : 46)) * p
@@ -288,6 +324,70 @@ export default function ExerciseDiagram({
               <rect x="105" y="33" width="10" height="12" {...body} />
               <circle cx="110" cy="24" r="8" {...body} />
             </g>
+          ): armsFront ? (
+            <g>
+              <text x="8" y="14" className="mono" fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>
+              {d.implement === 'polea' && [-1, 1].map((sd) => (
+                <g key={sd} stroke="var(--ink)" strokeOpacity="0.3" fill="none">
+                  <line x1={110 + sd * 96} x2={110 + sd * 96} y1="8" y2={FLOOR} strokeWidth="6" />
+                  <circle cx={110 + sd * 96} cy="22" r="6" fill="var(--surface)" strokeWidth="2" />
+                  <line x1={110 + sd * 96} y1="22" x2={fArms[sd < 0 ? 0 : 1].hand[0]} y2={fArms[sd < 0 ? 0 : 1].hand[1]} stroke="var(--ink)" strokeOpacity="0.6" strokeWidth="1.2" strokeDasharray="3 2" />
+                </g>
+              ))}
+              {d.pose.startsWith('sentado') && <rect x="86" y="106" width="48" height="7" fill="var(--ink)" fillOpacity="0.2" />}
+              {[-1, 1].map((sd) => {
+                const lg2 = seg([110 + sd * 9, 106], [110 + sd * 12, 150], [[0, 9], [0.4, 8], [1, 4.8]])
+                return (
+                  <g key={sd}>
+                    <polygon points={str(lg2.outline)} {...body} />
+                    <polygon points={str([[110 + sd * 12 - 7, 150], [110 + sd * 12 + 7, 150], [110 + sd * 12 + 9, 156], [110 + sd * 12 - 9, 156]])} {...body} />
+                  </g>
+                )
+              })}
+              <polygon points={str([[83, 44], [137, 44], [127, 80], [129, 108], [91, 108], [93, 80]])} {...body} />
+              <rect x="105" y="33" width="10" height="12" {...body} />
+              <circle cx="110" cy="24" r="8" {...body} />
+              {fArms.map((a) => (
+                <g key={a.sd}>
+                  <polygon points={str(a.ua.outline)} {...body} />
+                  <polygon points={str(a.fa.outline)} {...body} />
+                  <circle cx={a.hand[0]} cy={a.hand[1]} r="3.4" {...body} />
+                </g>
+              ))}
+              {fArms.map((a) => (
+                <g key={'m' + a.sd}>
+                  {(prim.has('pecho') || sec.has('pecho')) && (
+                    <polygon
+                      points={str([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => [110 + a.sd * 13 + Math.cos((k / 10) * 2 * Math.PI) * 11, 62 + Math.sin((k / 10) * 2 * Math.PI) * 8.5] as P))}
+                      {...mStyle('pecho')} strokeLinejoin="round"
+                    />
+                  )}
+                  {(prim.has('hombro') || sec.has('hombro')) && (
+                    <>
+                      <circle cx={a.sh[0]} cy={a.sh[1]} r="7.5" {...mStyle('hombro')} />
+                      <polygon points={str(a.ua.band(0, 0.5, 'both'))} {...mStyle('hombro')} strokeLinejoin="round" />
+                    </>
+                  )}
+                  {(prim.has('biceps') || sec.has('biceps')) && <polygon points={str(a.ua.band(0.2, 0.9, 'both'))} {...mStyle('biceps')} strokeLinejoin="round" />}
+                  {(prim.has('triceps') || sec.has('triceps')) && <polygon points={str(a.ua.band(0.2, 0.9, 'both'))} {...mStyle('triceps')} strokeLinejoin="round" />}
+                  {(prim.has('antebrazo') || sec.has('antebrazo')) && <polygon points={str(a.fa.band(0.05, 0.9, 'both'))} {...mStyle('antebrazo')} strokeLinejoin="round" />}
+                  {(prim.has('core') || sec.has('core')) && <polygon points={str([[100, 78], [120, 78], [118, 106], [102, 106]])} {...mStyle('core')} />}
+                  {/* flecha de sentido en cada mano */}
+                  {(() => {
+                    const dir: P = lift ? [0, -1] : closing ? [-a.sd, 0] : [a.sd, 0]
+                    const o: P = lift ? [a.sd * 13, 0] : [0, 14]
+                    const t0 = add(a.hand, o), t1 = add(t0, [dir[0] * 16, dir[1] * 16])
+                    return (
+                      <g>
+                        <line x1={t0[0]} y1={t0[1]} x2={t1[0]} y2={t1[1]} stroke="var(--signal)" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points={str([t1, add(t1, [-dir[0] * 6 - dir[1] * 3.5, -dir[1] * 6 + dir[0] * 3.5]), add(t1, [-dir[0] * 6 + dir[1] * 3.5, -dir[1] * 6 - dir[0] * 3.5])])} fill="var(--signal)" stroke="var(--ink)" strokeWidth="0.6" strokeLinejoin="round" />
+                      </g>
+                    )
+                  })()}
+                  <rect x={a.hand[0] - 4.5} y={a.hand[1] - 4.5} width="9" height="9" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
+                </g>
+              ))}
+            </g>
           ) : (<>
           <g {...mute} strokeLinecap="butt" fill="none">
             {(seated || horizontal) && <line x1={padA[0]} y1={padA[1]} x2={padB[0]} y2={padB[1]} strokeWidth="9" />}
@@ -335,11 +435,12 @@ export default function ExerciseDiagram({
           <polygon points={str(farm.outline)} {...body} />
           <circle cx={arm.end[0]} cy={arm.end[1]} r="3.4" {...body} />
 
-          {muscles.filter((x) => prim.has(x.m) || sec.has(x.m)).map((x) =>
-            x.circle
-              ? <circle key={x.m} cx={x.circle[0]} cy={x.circle[1]} r="6.5" {...mStyle(x.m)} />
-              : <polygon key={x.m} points={str(x.pts!)} {...mStyle(x.m)} strokeLinejoin="round" />,
-          )}
+          {muscles.filter((x) => prim.has(x.m) || sec.has(x.m)).map((x) => (
+            <g key={x.m}>
+              {x.circle && <circle cx={x.circle[0]} cy={x.circle[1]} r="6.5" {...mStyle(x.m)} />}
+              {x.pts && <polygon points={str(x.pts)} {...mStyle(x.m)} strokeLinejoin="round" />}
+            </g>
+          ))}
 
           {/* punto móvil */}
           <rect x={cur[0] - 4.5} y={cur[1] - 4.5} width="9" height="9" fill="var(--signal)" stroke="var(--ink)" strokeWidth="1.5" />
