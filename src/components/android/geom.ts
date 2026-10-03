@@ -169,7 +169,8 @@ export const JOINT_RANGE: Record<JointName, [number, number]> = {
 
 function skeletonOf(pose: MovementDiagram['pose'], backAngle: number): Skel {
   const r = (backAngle * Math.PI) / 180
-  const up: P = [-Math.sin(r), -Math.cos(r)]
+  // en prono el cuerpo mira al suelo: la cabeza queda más allá del hombro (+x), no sobre el torso
+  const up: P = pose === 'prono' ? [1, 0] : [-Math.sin(r), -Math.cos(r)]
   const { hip, shoulder, ankle } = basePose(pose, backAngle)
   const knee: P = pose === 'prono' ? [hip[0] - SEG.thigh, hip[1]] : ik(hip, ankle, SEG.thigh, SEG.shin, anterior(hip, ankle)).mid
   return { hip, shoulder, knee, ankle, up }
