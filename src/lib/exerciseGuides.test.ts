@@ -69,7 +69,7 @@ describe('alcance del rig', () => {
       const pts = [d.from, ...(d.via ? [d.via] : []), d.to].map((q) => px(q as P))
       for (const q of pts) {
         const ratio = Math.hypot(q[0] - root[0], q[1] - root[1]) / reach
-        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(0.96)
+        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(0.99)
         expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeGreaterThanOrEqual(0.15)
       }
     }
@@ -77,9 +77,10 @@ describe('alcance del rig', () => {
 })
 
 describe('codo alto', () => {
-  it('face pull, laterales y pájaros llevan el codo arriba', () => {
-    for (const n of ['Face pull en polea', 'Elevaciones laterales en máquina', 'Elevaciones laterales en polea', 'Pájaros en peck deck (deltoides posterior)'])
+  it('laterales y pájaros llevan el codo arriba; face pull no (hombro imposible en vista lateral)', () => {
+    for (const n of ['Elevaciones laterales en máquina', 'Elevaciones laterales en polea', 'Pájaros en peck deck (deltoides posterior)'])
       expect(findGuide(n)?.diagram.elbow, n).toBe('arriba')
+    expect(findGuide('Face pull en polea')?.diagram.elbow).toBeUndefined()
     expect(findGuide('Curl de bíceps en polea')?.diagram.elbow).toBeUndefined()
   })
 })

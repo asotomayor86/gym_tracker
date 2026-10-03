@@ -276,7 +276,7 @@ const BASE: ExerciseGuide[] = [
       'Dejar caer las rodillas hacia dentro.',
       'Rebotar abajo.',
     ],
-    diagram: d('tumbado', 60, 'maquina', 'bisagra', [0.5, 0.2], [0.5, 0.45], 'Eleva la cadera hasta la línea del tronco'),
+    diagram: d('tumbado', 90, 'maquina', 'bisagra', [0.5, 0.2], [0.5, 0.45], 'Eleva la cadera hasta la línea del tronco'),
   }),
 
   g('Elevación de gemelos sentado', 'aislamiento', 1, ['gemelo'], [], {
@@ -936,31 +936,31 @@ const CRUNCH: Step3 = ['Tronco recto', 'Flexiona el tronco', 'Abdomen contraído
  *  - colgado: hombro x≈0.49, y≈0.83; brazo estirado = 51 px hacia abajo.
  */
 const MOTION: Record<string, Motion> = {
-  'Prensa de piernas': { steps: ['Rodillas flexionadas', 'Empuja la plataforma', 'Piernas extendidas'], from: [0.567, 0.44], via: [0.628, 0.513], to: [0.689, 0.587], limb: 'pierna' },
-  'Hack squat': { steps: SQUAT, from: [0.467, 0.02], via: [0.544, 0.087], to: [0.656, 0.22], limb: 'pierna' },
-  'Sentadilla en multipower': { steps: SQUAT, from: [0.467, 0.02], via: [0.544, 0.087], to: [0.656, 0.22], limb: 'pierna' },
-  'Extensión de cuádriceps': { steps: LEG_EXT, from: [0.656, 0.02], via: [0.767, 0.073], to: [0.8, 0.187], limb: 'pierna' },
-  'Curl femoral tumbado': { steps: LEG_CURL, from: [0.04, 0.27], to: [0.22, 0.47], via: [0.08, 0.4], limb: 'pierna' },
-  'Curl femoral sentado': { steps: LEG_CURL, from: [0.8, 0.187], via: [0.733, 0.06], to: [0.594, 0.033], limb: 'pierna' },
+  'Prensa de piernas': { steps: ['Rodillas flexionadas', 'Empuja la plataforma', 'Piernas extendidas'], from: [0.567, 0.44], via: [0.628, 0.513], to: [0.7, 0.6], limb: 'pierna' },
+  'Hack squat': { steps: SQUAT, from: [0.467, 0.02], via: [0.589, 0.153], to: [0.711, 0.287], limb: 'pierna' },
+  'Sentadilla en multipower': { steps: SQUAT, from: [0.467, 0.02], via: [0.589, 0.153], to: [0.711, 0.287], limb: 'pierna' },
+  'Extensión de cuádriceps': { steps: LEG_EXT, from: [0.656, 0.02], via: [0.767, 0.073], to: [0.822, 0.16], limb: 'pierna' },
+  'Curl femoral tumbado': { steps: LEG_CURL, from: [0.017, 0.267], via: [0.078, 0.4], to: [0.3, 0.52], limb: 'pierna' },
+  'Curl femoral sentado': { steps: LEG_CURL, from: [0.822, 0.173], via: [0.733, 0.06], to: [0.594, 0.033], limb: 'pierna' },
   'Abductores en máquina': { steps: ['Piernas juntas', 'Abre las piernas', 'Piernas abiertas'], from: [0.622, 0.013], to: [0.689, 0.02], limb: 'pierna' },
   'Aductores en máquina': { steps: ['Piernas abiertas', 'Junta las piernas', 'Piernas juntas'], from: [0.689, 0.02], to: [0.622, 0.013], limb: 'pierna' },
-  'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], from: [0.522, 0.167], to: [0.222, 0.127], limb: 'pierna' },
-  'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.4, 0.31], to: [0.4, 0.43], limb: 'brazo' },
+  'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], from: [0.578, 0.113], to: [0.367, 0.02], limb: 'pierna' },
+  'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.378, 0.127], to: [0.389, 0.233], limb: 'brazo' },
   'Elevación de gemelos sentado': { steps: ['Talones abajo', 'Sube de puntillas', 'Máxima elevación'], from: [0.661, 0.0], to: [0.661, 0.04], limb: 'pierna' },
   'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Empuja con la punta', 'Máxima elevación'], from: [0.661, 0.56], to: [0.678, 0.587], limb: 'pierna' },
 
   'Press de pecho en máquina': { steps: ['Codos flexionados', 'Empuja adelante', 'Brazos extendidos'], from: [0.474, 0.542], to: [0.613, 0.548] },
   'Press inclinado en máquina': { steps: ['Codos flexionados', 'Empuja adelante y arriba', 'Brazos extendidos'], from: [0.292, 0.449], to: [0.404, 0.676] },
-  'Press banca en multipower': { steps: ['Barra en el pecho', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.178, 0.333], to: [0.178, 0.553] },
+  'Press banca en multipower': { steps: ['Barra en el pecho', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.178, 0.36], to: [0.178, 0.553] },
   'Peck deck (aperturas en máquina)': { steps: ['Brazos abiertos', 'Junta los brazos', 'Brazos cerrados'], from: [0.241, 0.475], via: [0.441, 0.468], to: [0.596, 0.535] },
   'Cruce de poleas': { steps: ['Brazos abiertos', 'Cruza hacia abajo', 'Manos cruzadas'], from: [0.306, 0.742], via: [0.495, 0.729], to: [0.578, 0.622] },
   'Fondos asistidos en máquina': { steps: ['Codos flexionados', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.533, 0.653], to: [0.489, 0.52] },
 
   'Press de hombros en máquina': { steps: ['Manos a los hombros', 'Empuja arriba', 'Brazos extendidos'], from: [0.431, 0.599], via: [0.42, 0.745], to: [0.409, 0.879] },
-  'Elevaciones laterales en máquina': { steps: RAISE, from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519], elbow: 'arriba' },
-  'Elevaciones laterales en polea': { steps: RAISE, from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78], elbow: 'arriba' },
-  'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505], elbow: 'arriba' },
-  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Codos altos atrás'], from: [0.711, 0.86], to: [0.544, 0.9], elbow: 'arriba' },
+  'Elevaciones laterales en máquina': { steps: RAISE, elbow: 'arriba', from: [0.398, 0.279], via: [0.509, 0.345], to: [0.587, 0.519] },
+  'Elevaciones laterales en polea': { steps: RAISE, elbow: 'arriba', from: [0.533, 0.54], via: [0.622, 0.633], to: [0.678, 0.78] },
+  'Pájaros en peck deck (deltoides posterior)': { steps: ['Brazos al frente', 'Abre hacia atrás', 'Brazos abiertos'], elbow: 'arriba', from: [0.609, 0.479], via: [0.465, 0.479], to: [0.287, 0.505] },
+  'Face pull en polea': { steps: ['Brazos estirados', 'Tira a la cara', 'Manos junto a la cara'], from: [0.711, 0.86], to: [0.544, 0.9] },
 
   'Curl de bíceps en máquina': { steps: CURL, from: [0.43, 0.275], via: [0.518, 0.382], to: [0.452, 0.528] },
   'Curl de bíceps en polea': { steps: CURL, from: [0.511, 0.527], via: [0.633, 0.633], to: [0.567, 0.793] },
