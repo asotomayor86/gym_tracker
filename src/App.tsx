@@ -19,40 +19,38 @@ const NAV = [
 function SyncDot() {
   const { status } = useSyncState()
   if (!hasToken()) return null
-  const color = { syncing: 'bg-e-hard animate-pulse', ok: 'bg-e-easy', error: 'bg-e-fail', unauth: 'bg-e-fail', idle: 'bg-mute' }[status]
-  return <span title={`Sync: ${status}`} className={`inline-block size-2 ${color}`} />
+  const color = { syncing: 'bg-signal animate-pulse', ok: 'bg-signal', error: 'bg-e-fail', unauth: 'bg-e-fail', idle: 'bg-mute' }[status]
+  return <span title={`Sync: ${status}`} className={`inline-block size-2 rounded-full ${color}`} />
 }
 
 export default function App() {
   const link = ({ isActive }: { isActive: boolean }) =>
-    `relative flex flex-1 md:flex-none flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3
-     px-1 py-2.5 md:px-3 text-[0.625rem] md:text-sm font-bold uppercase tracking-widest transition-colors ${
-      isActive
-        ? `text-ink md:bg-ink md:text-paper before:absolute before:bg-signal before:top-0 before:inset-x-3
-           md:before:inset-x-auto md:before:inset-y-0 md:before:left-0 md:before:w-[3px] before:h-[3px] md:before:h-auto`
-        : 'text-mute hover:text-ink'
+    `press flex flex-1 md:flex-none flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3
+     rounded-2xl px-1 py-2 md:px-4 md:py-3 text-[0.65rem] md:text-sm font-semibold ${
+      isActive ? 'bg-gradient-to-br from-signal to-signal-2 text-on-signal' : 'text-mute hover:text-ink'
     }`
 
   return (
     <div className="min-h-dvh md:flex">
+      <div className="live-bg" aria-hidden><i /><i /><i /><i /></div>
       <nav
-        className="fixed bottom-0 inset-x-0 z-20 flex border-t-2 border-ink bg-paper pb-[env(safe-area-inset-bottom)]
-                   md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-0.5 md:border-t-0 md:border-r-2 md:p-4 md:pb-4"
+        className="glass-flat fixed bottom-3 inset-x-3 z-20 flex gap-1 p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]
+                   md:sticky md:top-4 md:bottom-auto md:inset-x-auto md:m-4 md:h-[calc(100dvh-2rem)] md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:p-3"
       >
-        <div className="hidden md:block px-3 pt-2 pb-8">
-          <div className="display text-5xl">Gym<br />Tracker</div>
+        <div className="hidden md:block px-3 pt-3 pb-7">
+          <div className="display heat text-3xl leading-tight pb-1">Gym<br />Tracker</div>
           <div className="eyebrow mt-3 flex items-center gap-2">Registro de series <SyncDot /></div>
         </div>
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className={link}>
-            <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" aria-hidden>
+            <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d={n.d} />
             </svg>
             {n.label}
           </NavLink>
         ))}
       </nav>
-      <main className="min-w-0 flex-1 pb-28 md:pb-8">
+      <main className="min-w-0 flex-1 pb-32 md:pb-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/session/:id" element={<SessionPage />} />
