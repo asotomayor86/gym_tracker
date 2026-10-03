@@ -79,10 +79,10 @@ describe('alcance del rig', () => {
       const hy = pull ? Math.min(A[1], B[1]) : Math.max(A[1], B[1])
       const top = pull ? hy + pullStart - rise : hy + dipStart - rise // hombro en el punto más alto
       expect(headTop(top), `${key}: cabeza`).toBeGreaterThanOrEqual(0)
-      // distancia hombro-manos en el punto más estirado: alcance del brazo + 6 px (SPECIAL.colgado.pullStart 58 deja las manos ~5 px por encima del brazo estirado; bajar a ~50 permite apretar la tolerancia a 3)
+      // distancia hombro-manos en el punto más estirado: dentro del alcance del brazo (+ 3 px de tolerancia)
       const far = pull ? hy + pullStart : hy - dipStart
       const stretch = pull ? far - hy : hy - (hy + dipStart - rise)
-      expect(stretch, `${key}: brazo`).toBeLessThanOrEqual(ARM + 6)
+      expect(stretch, `${key}: brazo`).toBeLessThanOrEqual(ARM + 3)
     }
   })
 })
