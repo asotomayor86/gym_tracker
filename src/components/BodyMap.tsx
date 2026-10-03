@@ -43,7 +43,7 @@ function Figure({ title, regions, primary, secondary }: {
 }) {
   const style = (m: MuscleGroup) =>
     primary.has(m)
-      ? { fill: 'var(--signal)', stroke: 'var(--ink)', strokeWidth: 1 }
+      ? { fill: 'var(--signal)', stroke: 'var(--signal-2)', strokeWidth: 1 }
       : secondary.has(m)
         ? { fill: 'var(--signal)', fillOpacity: 0.32, stroke: 'var(--signal)', strokeWidth: 1 }
         : { fill: 'transparent', stroke: 'var(--hair)', strokeWidth: 0.8 }
@@ -77,12 +77,12 @@ export default function BodyMap({ primary, secondary }: { primary: MuscleGroup[]
         <Figure title="Frente" regions={FRONT} primary={p} secondary={s} />
         <Figure title="Espalda" regions={BACK} primary={p} secondary={s} />
       </div>
-      <ul className="mono mt-3 space-y-1 text-xs">
+      <ul className="mt-3 space-y-1.5 text-xs">
         {primary.map((m) => (
-          <li key={m} className="flex items-center gap-2"><i className="size-3 border border-ink bg-signal" />{MUSCLE_LABELS[m]}<span className="text-mute">principal</span></li>
+          <li key={m} className="flex items-center gap-2"><i className="size-3 rounded-full bg-signal" />{MUSCLE_LABELS[m]}<span className="text-mute">principal</span></li>
         ))}
         {[...s].map((m) => (
-          <li key={m} className="flex items-center gap-2"><i className="size-3 border border-signal bg-signal/30" />{MUSCLE_LABELS[m]}<span className="text-mute">secundario</span></li>
+          <li key={m} className="flex items-center gap-2"><i className="size-3 rounded-full border border-signal bg-signal/30" />{MUSCLE_LABELS[m]}<span className="text-mute">secundario</span></li>
         ))}
       </ul>
     </div>

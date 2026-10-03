@@ -369,7 +369,7 @@ export default function ExerciseDiagram({
       <div className="relative">
         <svg
           viewBox="0 0 220 170"
-          className="block h-auto w-full cursor-pointer border border-ink bg-surface"
+          className="block h-auto w-full cursor-pointer rounded-2xl border border-hair bg-surface"
           role="img"
           aria-label={d.caption ?? 'Esquema del ejercicio'}
           onClick={() => setPaused((x) => !x)}
@@ -382,7 +382,7 @@ export default function ExerciseDiagram({
 
           {frontal ? (
             <g>
-              <text x="8" y="14" className="mono" fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>
+              <text x="8" y="14" fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>
               <rect x="94" y="38" width="32" height="70" {...mute} fill="var(--ink)" fillOpacity="0.1" stroke="none" />
               <rect x="82" y="106" width="56" height="7" fill="var(--ink)" fillOpacity="0.2" />
               {[-1, 1].map((sd) => {
@@ -413,7 +413,7 @@ export default function ExerciseDiagram({
             </g>
           ): armsFront ? (
             <g>
-              <text x="8" y="14" className="mono" fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>
+              <text x="8" y="14" fontSize="6.5" fill="var(--mute)" style={{ letterSpacing: '0.14em' }}>VISTA FRONTAL</text>
               {d.implement === 'polea' && [-1, 1].map((sd) => (
                 <g key={sd} stroke="var(--ink)" strokeOpacity="0.3" fill="none">
                   <line x1={110 + sd * 96} x2={110 + sd * 96} y1="8" y2={FLOOR} strokeWidth="6" />
@@ -547,7 +547,7 @@ export default function ExerciseDiagram({
           type="button"
           aria-label={paused ? 'Reproducir animación' : 'Pausar animación'}
           onClick={() => setPaused((x) => !x)}
-          className="absolute right-1.5 top-1.5 grid size-8 place-items-center border border-ink bg-paper hover:bg-ink hover:text-paper"
+          className="press absolute right-2 top-2 grid size-8 place-items-center rounded-full border border-hair bg-paper/80 text-ink hover:bg-signal hover:text-on-signal"
         >
           <svg viewBox="0 0 10 10" className="size-3" fill="currentColor" aria-hidden>
             {paused ? <polygon points="2,1 9,5 2,9" /> : <path d="M2 1h2v8H2zM6 1h2v8H6z" />}
@@ -555,7 +555,7 @@ export default function ExerciseDiagram({
         </button>
       </div>
 
-      <figcaption className="mono mt-2 flex items-center gap-3 text-xs">
+      <figcaption className="mt-2 flex items-center gap-3 text-xs">
         <span className="flex shrink-0 gap-1">
           {[0, 1, 2].map((i) => (
             <button
@@ -564,7 +564,7 @@ export default function ExerciseDiagram({
               onClick={() => seek(i)}
               aria-label={`Paso ${i + 1}`}
               aria-current={active === i}
-              className={`size-6 border border-ink text-[0.7rem] font-bold ${active === i ? 'bg-signal text-on-signal' : 'text-mute hover:text-ink'}`}
+              className={`press size-7 rounded-full border text-[0.7rem] font-semibold ${active === i ? 'border-signal bg-signal text-on-signal' : 'border-hair text-mute hover:text-ink'}`}
             >
               {i + 1}
             </button>
@@ -573,11 +573,11 @@ export default function ExerciseDiagram({
         <span className="min-w-0 flex-1">{label}</span>
       </figcaption>
       {phases && (
-        <div className="mono mt-2 space-y-1 text-[0.7rem] leading-snug">
+        <div className="mt-2 space-y-1 text-[0.72rem] leading-snug">
           <span
             aria-label={concentric ? 'Fase de carga' : 'Fase de control'}
-            className={`inline-block border px-2 py-0.5 font-bold uppercase tracking-wider ${
-              concentric ? 'border-ink bg-signal text-on-signal' : 'border-dashed border-ink/50 text-mute'
+            className={`inline-block rounded-full border px-3 py-0.5 font-semibold ${
+              concentric ? 'border-signal bg-signal text-on-signal' : 'border-dashed border-hair text-mute'
             }`}
           >
             {concentric ? `● Carga · ${verb}` : '○ Vuelves · controla'}
@@ -588,7 +588,7 @@ export default function ExerciseDiagram({
           </p>
         </div>
       )}
-      {tempoNote && phases && <p className="mono mt-1 text-[0.7rem] text-ink">{tempoNote}</p>}
+      {tempoNote && phases && <p className="mt-1 text-[0.72rem] text-ink">{tempoNote}</p>}
     </figure>
   )
 }
