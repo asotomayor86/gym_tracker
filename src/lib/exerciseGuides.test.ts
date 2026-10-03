@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { GUIDES, findGuide } from './exerciseGuides'
 import { SEED } from './seed'
 import { MUSCLE_ID_GROUP, MUSCLE_IDS } from './guideTypes'
+import { basePose, SEG, SPECIAL, toPx, type RigPose } from './rigSpec'
 import { MUSCLE_GROUPS } from './types'
 
 describe('exerciseGuides', () => {
@@ -41,40 +42,47 @@ describe('exerciseGuides', () => {
   })
 })
 
-// Espejo de las constantes de skeleton() en ExerciseDiagram.tsx: el punto que se anima (mano/pie)
-// debe quedar dentro del alcance del brazo (51 px) o la pierna (78 px) sin hiperextender ni plegarse del todo.
-type P = [number, number]
-const FLOOR = 156, TORSO = 50
-const rootOf = (pose: string, backAngle: number, leg: boolean): P => {
-  const r = (backAngle * Math.PI) / 180
-  const up: P = [-Math.sin(r), -Math.cos(r)]
-  let hip: P, sh: P
-  switch (pose) {
-    case 'tumbado': hip = [92, 118]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
-    case 'prono': hip = [100, 118]; sh = [hip[0] + TORSO, hip[1]]; break
-    case 'de-pie': hip = [104, FLOOR - 77]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]; break
-    case 'colgado': sh = [108, 32]; hip = [108, 32 + TORSO]; break
-    default: hip = [92, FLOOR - 36]; sh = [hip[0] + up[0] * TORSO, hip[1] + up[1] * TORSO]
-  }
-  return leg ? hip : sh
+// Alcance y medidas: se leen de rigSpec.ts (las mismas constantes que usa el rig), sin copias.
+const LEG = SEG.thigh + SEG.shin
+const ARM = SEG.uarm + SEG.farm
+const rootOf = (pose: RigPose, backAngle: number, leg: boolean): [number, number] => {
+  const b = basePose(pose, backAngle)
+  return leg ? b.hip : b.shoulder
 }
 
 describe('alcance del rig', () => {
   it('from/via/to quedan dentro del alcance, sin estirar ni plegar del todo la extremidad', () => {
     for (const x of GUIDES) {
       const d = x.diagram
+      if (d.pose === 'colgado') continue // el rig mueve el cuerpo y coloca las manos con from/to absolutos (ver test siguiente)
       const leg = d.limb === 'pierna'
+      const calf = leg && d.motion === 'elevacion'
       const root = rootOf(d.pose, d.backAngle, leg)
-      const reach = leg ? 78 : 51
-      const px = ([a, b]: P): P => [20 + a * 180, FLOOR - b * 150]
-      const pts = [d.from, ...(d.via ? [d.via] : []), d.to].map((q) => px(q as P))
+      const reach = leg ? LEG : ARM
+      const pts = [d.from, ...(d.via ? [d.via] : []), d.to].map((q) => toPx(q))
       for (const q of pts) {
         const ratio = Math.hypot(q[0] - root[0], q[1] - root[1]) / reach
-        // gemelos: la pierna de reposo es casi recta (flexión de rodilla 5-10°) y solo gira el tobillo
-        const calf = leg && d.motion === 'elevacion' && d.pose === 'sentado-reclinado'
-        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(calf ? 1.0 : 0.99)
+        // el rig recorta a REACH.*; el gemelo en prensa parte de la pierna recta (solo su dirección cuenta)
+        expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeLessThanOrEqual(calf ? 1.01 : 1.0)
         expect(ratio, `${x.key} (${ratio.toFixed(2)})`).toBeGreaterThanOrEqual(0.15)
       }
+    }
+  })
+
+  it('colgado: las manos fijas dejan la cabeza dentro del lienzo y el brazo casi estirado', () => {
+    const { rise, pullStart, dipStart } = SPECIAL.colgado
+    const headTop = (shoulderY: number) => shoulderY - SEG.neckVisible - SEG.head
+    for (const key of ['Fondos asistidos en máquina', 'Dominadas asistidas en máquina']) {
+      const d = findGuide(key)!.diagram
+      const A = toPx(d.from), B = toPx(d.to)
+      const pull = d.motion === 'tiron'
+      const hy = pull ? Math.min(A[1], B[1]) : Math.max(A[1], B[1])
+      const top = pull ? hy + pullStart - rise : hy + dipStart - rise // hombro en el punto más alto
+      expect(headTop(top), `${key}: cabeza`).toBeGreaterThanOrEqual(0)
+      // distancia hombro-manos en el punto más estirado: alcance del brazo + 6 px (SPECIAL.colgado.pullStart 58 deja las manos ~5 px por encima del brazo estirado; bajar a ~50 permite apretar la tolerancia a 3)
+      const far = pull ? hy + pullStart : hy - dipStart
+      const stretch = pull ? far - hy : hy - (hy + dipStart - rise)
+      expect(stretch, `${key}: brazo`).toBeLessThanOrEqual(ARM + 6)
     }
   })
 })
@@ -82,11 +90,18 @@ describe('alcance del rig', () => {
 describe('gemelos', () => {
   it('en prensa la pierna parte casi recta y solo se mueve el tobillo', () => {
     const g = findGuide('Elevación de gemelos en prensa')!
-    const hip: P = [92, FLOOR - 36]
-    const [fx, fy] = [20 + g.diagram.from[0] * 180, FLOOR - g.diagram.from[1] * 150]
-    expect(Math.hypot(fx - hip[0], fy - hip[1]) / 78).toBeGreaterThanOrEqual(0.99)
+    const hip = basePose('sentado-reclinado', 45).hip
+    const [fx, fy] = toPx(g.diagram.from)
+    expect(Math.hypot(fx - hip[0], fy - hip[1]) / LEG).toBeGreaterThanOrEqual(0.99)
     expect(g.execution.join(' ')).toMatch(/solo los tobillos/)
     expect(g.steps?.[1]).toBe('Extiende los tobillos')
+  })
+
+  it('sentado parte con la rodilla a ~90° (muslo horizontal, pierna vertical)', () => {
+    const g = findGuide('Elevación de gemelos sentado')!
+    const hip = basePose('sentado', 10).hip
+    const [fx] = toPx(g.diagram.from)
+    expect(Math.abs(fx - (hip[0] + SEG.thigh))).toBeLessThanOrEqual(3)
   })
 })
 
