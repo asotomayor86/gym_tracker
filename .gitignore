@@ -31,3 +31,6 @@ dist-ssr
 
 # Claude Code (config local)
 .claude/settings.local.json
+
+# Imágenes de referencia/inspiración (no se suben)
+/inspire/
