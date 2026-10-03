@@ -34,7 +34,11 @@ function ik(root: P, target: P, l1: number, l2: number, pick: (a: P, b: P) => P,
   }
 }
 const lower = (a: P, b: P) => (a[1] > b[1] ? a : b)
-const forward = (a: P, b: P) => (a[0] > b[0] ? a : b)
+/** Rodilla/codo hacia el lado "anterior" del eje raíz→objetivo (el de la rodilla humana, en cualquier postura). */
+const anterior = (root: P, target: P) => {
+  const cross = (k: P) => (target[0] - root[0]) * (k[1] - root[1]) - (target[1] - root[1]) * (k[0] - root[0])
+  return (a: P, b: P) => (cross(a) < cross(b) ? a : b)
+}
 const higher = (a: P, b: P) => (a[1] < b[1] ? a : b)
 
 function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
@@ -44,7 +48,7 @@ function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
   switch (pose) {
     case 'tumbado':
       hip = [92, 118]; ankle = [hip[0] + 46, FLOOR]
-      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, forward).mid
+      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid
       break
     case 'prono':
       hip = [100, 118]; shoulder = [hip[0] + TORSO, hip[1]]
@@ -52,15 +56,15 @@ function skeleton(pose: MovementDiagram['pose'], backAngle: number) {
       break
     case 'de-pie':
       hip = [104, FLOOR - 77]; ankle = [104, FLOOR]
-      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, forward).mid
+      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid
       break
     case 'colgado':
       shoulder = [108, 32]; hip = [108, 32 + TORSO]; ankle = [104, hip[1] + THIGH + SHIN - 4]
-      knee = ik(hip, ankle, THIGH, SHIN, forward).mid
+      knee = ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid
       break
     default:
       hip = [92, FLOOR - 36]; ankle = [hip[0] + THIGH - 2, FLOOR]
-      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, forward).mid
+      shoulder = add(hip, [up[0] * TORSO, up[1] * TORSO]); knee = ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid
   }
   return { hip, shoulder, knee, ankle, up }
 }
@@ -209,7 +213,7 @@ export default function ExerciseDiagram({
     const sh = bodyAt(p)
     const hip: P = [sh[0], sh[1] + TORSO]
     const ankle: P = [hip[0] - 10, Math.min(hip[1] + 34, FLOOR - 4)]
-    s = { shoulder: sh, hip, ankle, knee: ik(hip, ankle, THIGH, SHIN, forward).mid, up: [0, -1] }
+    s = { shoulder: sh, hip, ankle, knee: ik(hip, ankle, THIGH, SHIN, anterior(hip, ankle)).mid, up: [0, -1] }
     A = chest(0); B = chest(1); V = null; cur = chest(p)
     armTarget = H
     if (!pull) armPick = (a, b) => (a[0] < b[0] ? a : b)
@@ -219,7 +223,7 @@ export default function ExerciseDiagram({
     const S = base.shoulder
     const l = Math.hypot(cur[0] - S[0], cur[1] - S[1]) || 1
     const hip: P = [S[0] + ((cur[0] - S[0]) / l) * TORSO, S[1] + ((cur[1] - S[1]) / l) * TORSO]
-    const k = ik(hip, base.ankle, THIGH, SHIN, forward)
+    const k = ik(hip, base.ankle, THIGH, SHIN, anterior(hip, base.ankle))
     s = { shoulder: S, hip, ankle: k.end, knee: k.mid, up: [(S[0] - hip[0]) / TORSO, (S[1] - hip[1]) / TORSO] }
   }
 
@@ -231,39 +235,48 @@ export default function ExerciseDiagram({
     const pathAt = (q: number): P => (V ? (q < 0.5 ? mix(A0, V, q * 2) : mix(V, B, (q - 0.5) * 2)) : mix(A0, B, q))
     A = hipOf(pathAt(0)); B = hipOf(pathAt(1)); cur = hip; V = null
     const shift: P = [hip[0] - base.hip[0], hip[1] - base.hip[1]]
-    const k = ik(hip, base.ankle, THIGH, SHIN, forward, 0.985)
+    const k = ik(hip, base.ankle, THIGH, SHIN, anterior(hip, base.ankle), 0.985)
     s = { shoulder: add(base.shoulder, shift), hip, ankle: k.end, knee: k.mid, up: base.up }
   }
 
-  // Elevación de gemelos: cadera fija; el pie gira sobre el antepié (plantarflexión 0→40°) y la rodilla se resuelve por IK.
+  // Elevación de gemelos: cadera, rodilla y tobillo FIJOS; solo gira el pie (plantarflexión 0→40°) empujando un pedal.
   const calf = leg && d.motion === 'elevacion'
   const rot = (v: P, a: number): P => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]
   let footVec: P | null = null
   let calfLeg: { mid: P; end: P } | null = null
+  let pedal: [P, P] | null = null
   if (calf) {
-    const rest = ik(s.hip, A, THIGH, SHIN, forward, 0.985)
+    const reclined = d.pose === 'sentado-reclinado'
+    let rest: { mid: P; end: P }
+    if (reclined) {
+      // Prensa: piernas casi rectas (flexión ~7°), inclinadas hacia el punto de partida del pie.
+      const dl = Math.hypot(A[0] - s.hip[0], A[1] - s.hip[1]) || 1
+      const tgt: P = [s.hip[0] + ((A[0] - s.hip[0]) / dl) * (THIGH + SHIN), s.hip[1] + ((A[1] - s.hip[1]) / dl) * (THIGH + SHIN)]
+      rest = ik(s.hip, tgt, THIGH, SHIN, anterior(s.hip, tgt), 0.998)
+    } else {
+      // Sentado: rodilla ~90°; el tobillo queda algo elevado para que el pedal gire sin hundirse en el suelo.
+      const tgt: P = [A[0], FLOOR - 9]
+      rest = ik(s.hip, tgt, THIGH, SHIN, anterior(s.hip, tgt), 0.985)
+    }
     const l0 = Math.hypot(rest.end[0] - rest.mid[0], rest.end[1] - rest.mid[1]) || 1
     const f0: P = [(rest.end[1] - rest.mid[1]) / l0, -(rest.end[0] - rest.mid[0]) / l0]
-    const toe = add(rest.end, [f0[0] * 11, f0[1] * 11])
-    const fvAt = (q: number) => rot(f0, (40 * Math.PI / 180) * q)
-    const ankleAt = (q: number): P => [toe[0] - fvAt(q)[0] * 11, toe[1] - fvAt(q)[1] * 11]
+    const fvAt = (q: number) => rot(f0, ((40 * Math.PI) / 180) * q)
+    const toeAt = (q: number): P => add(rest.end, [fvAt(q)[0] * 11, fvAt(q)[1] * 11])
     footVec = fvAt(p)
-    if (d.pose === 'sentado-reclinado') {
-      // Prensa: pierna rígida (rodilla constante); solo gira el pie sobre el tobillo.
-      const toeAt = (q: number): P => add(rest.end, [fvAt(q)[0] * 11, fvAt(q)[1] * 11])
-      calfLeg = rest
-      A = toeAt(0); B = toeAt(1); V = null; cur = toeAt(p)
-    } else {
-      calfLeg = ik(s.hip, ankleAt(p), THIGH, SHIN, forward, 0.985)
-      A = ankleAt(0); B = ankleAt(1); V = null; cur = calfLeg.end
-    }
+    calfLeg = rest
+    const sole: P = [-footVec[1], footVec[0]]
+    pedal = [
+      add(rest.end, [sole[0] * 4 - footVec[0] * 4, sole[1] * 4 - footVec[1] * 4]),
+      add(rest.end, [sole[0] * 4 + footVec[0] * 19, sole[1] * 4 + footVec[1] * 19]),
+    ]
+    A = toeAt(0); B = toeAt(1); V = null; cur = toeAt(p)
   }
   // Brazo que no trabaja: cuelga (o agarra el asa en prono / la barra en sentadilla), sin atravesar suelo ni banco.
   const staticArm: P = d.pose === 'prono' ? [10, 14] : squat ? [4, -4] : [14, Math.min(40, FLOOR - 4 - s.shoulder[1])]
   const arm = leg
     ? ik(s.shoulder, add(s.shoulder, staticArm), UARM, FARM, lower)
     : ik(s.shoulder, armTarget ?? cur, UARM, FARM, armPick, 0.98)
-  const lg = calfLeg ?? (squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, d.pose === 'prono' ? lower : forward, 0.985) : { mid: s.knee, end: s.ankle })
+  const lg = calfLeg ?? (squat ? { mid: s.knee, end: s.ankle } : leg ? ik(s.hip, cur, THIGH, SHIN, anterior(s.hip, cur), 0.985) : { mid: s.knee, end: s.ankle })
 
   const torso = seg(s.hip, s.shoulder, TORSO_PROF, -1)
   const neck = seg(s.shoulder, add(s.shoulder, [s.up[0] * 11, s.up[1] * 11]), NECK_PROF, -1)
@@ -489,7 +502,8 @@ export default function ExerciseDiagram({
             {d.implement === 'multipower' && <line x1={A[0]} x2={A[0]} y1="8" y2={FLOOR} strokeWidth="5" />}
           </g>
           {d.implement === 'multipower' && <circle cx={cur[0]} cy={cur[1]} r="4.5" fill="var(--surface)" stroke="var(--ink)" strokeWidth="2.5" />}
-          {d.implement === 'maquina' && <circle cx={cur[0] + 3} cy={cur[1] - 1} r="3.5" fill="var(--ink)" fillOpacity="0.35" />}
+          {pedal && <line x1={pedal[0][0]} y1={pedal[0][1]} x2={pedal[1][0]} y2={pedal[1][1]} stroke="var(--ink)" strokeOpacity="0.4" strokeWidth="3.5" strokeLinecap="round" />}
+          {d.implement === 'maquina' && !calf && <circle cx={cur[0] + 3} cy={cur[1] - 1} r="3.5" fill="var(--ink)" fillOpacity="0.35" />}
 
           {/* recorrido: línea punteada + flecha + marca de inicio */}
           {phases ? (
