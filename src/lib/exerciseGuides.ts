@@ -929,27 +929,32 @@ const CRUNCH: Step3 = ['Tronco recto', 'Flexiona el tronco', 'Abdomen contraído
  * Animación: la mano/pie se mueve from → (via) → to y vuelve. `from` es la salida del recorrido y
  * `to` el final de la fase de trabajo. En abductores/aductores el movimiento real es lateral (no se
  * ve en vista lateral): from/to solo marcan apertura y cierre.
+ *
+ * Anclaje al esqueleto de ExerciseDiagram (x = (px-20)/180, y = (156-py)/150):
+ *  - prono: cadera x≈0.44, y≈0.25; pies en reposo x≈0.03; hombro x≈0.72. Pierna estirada ≈78 px.
+ *  - tumbado: hombro x≈0.12-0.27 (cabeza a la izquierda), cadera x≈0.40, y≈0.25.
+ *  - colgado: hombro x≈0.49, y≈0.83; brazo estirado = 51 px hacia abajo.
  */
 const MOTION: Record<string, Motion> = {
   'Prensa de piernas': { steps: ['Rodillas flexionadas', 'Empuja la plataforma', 'Piernas extendidas'], via: [0.72, 0.45], limb: 'pierna' },
   'Hack squat': { steps: SQUAT, from: [0.5, 0.85], to: [0.5, 0.55], via: [0.5, 0.7], limb: 'pierna' },
   'Sentadilla en multipower': { steps: SQUAT, via: [0.5, 0.7], limb: 'pierna' },
   'Extensión de cuádriceps': { steps: LEG_EXT, limb: 'pierna' },
-  'Curl femoral tumbado': { steps: LEG_CURL, from: [0.1, 0.25], to: [0.3, 0.55], limb: 'pierna' },
+  'Curl femoral tumbado': { steps: LEG_CURL, from: [0.04, 0.27], to: [0.22, 0.47], via: [0.08, 0.4], limb: 'pierna' },
   'Curl femoral sentado': { steps: LEG_CURL, limb: 'pierna' },
   'Abductores en máquina': { steps: ['Piernas juntas', 'Abre las piernas', 'Piernas abiertas'], from: [0.6, 0.35], to: [0.72, 0.35], limb: 'pierna' },
   'Aductores en máquina': { steps: ['Piernas abiertas', 'Junta las piernas', 'Piernas juntas'], from: [0.72, 0.35], to: [0.6, 0.35], limb: 'pierna' },
   'Patada de glúteo en máquina': { steps: ['Cadera flexionada', 'Empuja atrás', 'Cadera extendida'], limb: 'pierna' },
-  'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.5, 0.2], to: [0.5, 0.45], limb: 'pierna' },
+  'Hip thrust en máquina': { steps: ['Cadera abajo', 'Sube la cadera', 'Cadera extendida'], from: [0.4, 0.31], to: [0.4, 0.43], limb: 'brazo' },
   'Elevación de gemelos sentado': { steps: ['Talones abajo', 'Sube de puntillas', 'Máxima elevación'], limb: 'pierna' },
   'Elevación de gemelos en prensa': { steps: ['Talones abajo', 'Empuja con la punta', 'Máxima elevación'], limb: 'pierna' },
 
   'Press de pecho en máquina': { steps: ['Codos flexionados', 'Empuja adelante', 'Brazos extendidos'] },
   'Press inclinado en máquina': { steps: ['Codos flexionados', 'Empuja adelante y arriba', 'Brazos extendidos'] },
-  'Press banca en multipower': { steps: ['Barra en el pecho', 'Empuja hacia arriba', 'Brazos extendidos'] },
+  'Press banca en multipower': { steps: ['Barra en el pecho', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.17, 0.31], to: [0.15, 0.57] },
   'Peck deck (aperturas en máquina)': { steps: ['Brazos abiertos', 'Junta los brazos', 'Brazos cerrados'] },
   'Cruce de poleas': { steps: ['Brazos abiertos', 'Cruza hacia abajo', 'Manos cruzadas'], from: [0.35, 0.7], to: [0.8, 0.45] },
-  'Fondos asistidos en máquina': { steps: ['Codos flexionados', 'Empuja hacia arriba', 'Brazos extendidos'] },
+  'Fondos asistidos en máquina': { steps: ['Codos flexionados', 'Empuja hacia arriba', 'Brazos extendidos'], from: [0.52, 0.66], to: [0.49, 0.49] },
 
   'Press de hombros en máquina': { steps: ['Manos a los hombros', 'Empuja arriba', 'Brazos extendidos'], via: [0.5, 0.84] },
   'Elevaciones laterales en máquina': { steps: RAISE },
