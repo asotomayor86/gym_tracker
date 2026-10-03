@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'Gym Tracker',
         short_name: 'Gym',
         description: 'Seguimiento de entrenamientos',
-        theme_color: '#15130f',
-        background_color: '#e8e3d8',
+        theme_color: '#05070a',
+        background_color: '#05070a',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -24,7 +24,12 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
-      workbox: { navigateFallbackDenylist: [/^\/api\//] },
+      workbox: {
+        navigateFallbackDenylist: [/^\/api\//],
+        // Fuentes latinas disponibles offline (sin subconjuntos cirílico/vietnamita/latin-ext)
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globIgnores: ['**/*-cyrillic-*', '**/*-vietnamese-*', '**/*-latin-ext-*'],
+      },
     }),
   ],
   test: { include: ['src/**/*.test.ts'] },
