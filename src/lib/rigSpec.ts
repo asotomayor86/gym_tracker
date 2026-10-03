@@ -29,7 +29,7 @@ export const ARM_REACH_TOTAL = SEG.uarm + SEG.farm // 53
 export const LEG_REACH_TOTAL = SEG.thigh + SEG.shin // 78
 
 /** Fracción máxima de la longitud total que alcanza cada miembro (deja siempre flexión mínima de codo/rodilla). */
-export const REACH = { arm: 0.98, leg: 0.985, legStanding: 0.985, legRigid: 0.998 } as const
+export const REACH = { arm: 0.98, leg: 0.985, legStanding: 0.995, legRigid: 0.998 } as const
 
 /** Mapeo de coordenadas normalizadas de las fichas (x 0..1 atrás→delante, y 0..1 abajo→arriba) a px del lienzo. */
 export const MAP = { bx: 20, bw: 180, by: 6, bh: CANVAS.floor - 6 } as const
