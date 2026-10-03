@@ -1,10 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { GuideToggle } from '../components/ExerciseGuideView'
-import { Button, CommitInput, MuscleSelect, Page, SectionTitle, card, inputCls } from '../components/ui'
+import { Button, CommitInput, EmptyState, MuscleSelect, Page, SectionTitle, card, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
-import { seedExercises } from '../lib/seed'
 import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../lib/types'
 
 export default function ExercisesPage() {
@@ -26,12 +25,7 @@ export default function ExercisesPage() {
   return (
     <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={<Button onClick={add}>+ Nuevo</Button>}>
       <input className={`${inputCls} text-lg`} placeholder="Buscar…" value={query} onChange={(e) => setQuery(e.target.value)} />
-      {exercises.length === 0 && (
-        <div className={`${card} p-4 space-y-3`}>
-          <p>Aún no tienes ejercicios.</p>
-          <Button onClick={() => seedExercises()}>Importar ejercicios de máquina</Button>
-        </div>
-      )}
+      {exercises.length === 0 && <EmptyState>Aún no hay ejercicios: crea el primero con «+ Nuevo».</EmptyState>}
       {MUSCLE_GROUPS.map((m) => {
         const list = shown.filter((e) => e.primaryMuscle === m)
         if (!list.length) return null
@@ -56,16 +50,6 @@ export default function ExercisesPage() {
           </section>
         )
       })}
-      {exercises.length > 0 && (
-        <Button
-          onClick={async () => {
-            const n = await seedExercises()
-            alert(n ? `Se añadieron ${n} ejercicios.` : 'Ya tienes todos los ejercicios del listado.')
-          }}
-        >
-          Importar ejercicios de máquina
-        </Button>
-      )}
     </Page>
   )
 }

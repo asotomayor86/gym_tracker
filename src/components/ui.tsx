@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { MUSCLE_GROUPS, type MuscleGroup } from '../lib/types'
 
@@ -81,4 +81,17 @@ export function MuscleSelect({
       ))}
     </select>
   )
+}
+
+/**
+ * Estado vacío con un breve margen: la siembra inicial de la base de datos llega unos instantes
+ * después del primer render, así que no se muestra "no hay nada" hasta que pase (evita el parpadeo).
+ */
+export function EmptyState({ children, delayMs = 600 }: { children: ReactNode; delayMs?: number }) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), delayMs)
+    return () => clearTimeout(t)
+  }, [delayMs])
+  return ready ? <p className="text-mute">{children}</p> : <p className="mono text-xs text-mute" aria-busy="true">Cargando…</p>
 }

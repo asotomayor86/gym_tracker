@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Page, SectionTitle } from '../components/ui'
+import { Button, EmptyState, Page, SectionTitle } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS, fmtDate } from '../lib/labels'
 import { startSession } from '../lib/session'
@@ -44,10 +44,9 @@ export default function HomePage() {
       <section>
         <SectionTitle n="01">Empezar rutina</SectionTitle>
         {templates.length === 0 && (
-          <p className="text-mute">
-            Primero <Link className="underline decoration-signal decoration-2 underline-offset-4" to="/exercises">añade ejercicios</Link> y crea una{' '}
-            <Link className="underline decoration-signal decoration-2 underline-offset-4" to="/templates">rutina</Link>.
-          </p>
+          <EmptyState>
+            Aún no hay rutinas: crea la primera en <Link className="underline decoration-signal decoration-2 underline-offset-4" to="/templates">Rutinas</Link>.
+          </EmptyState>
         )}
         <ul>
           {templates.map((t, i) => (
