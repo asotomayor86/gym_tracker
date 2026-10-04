@@ -7,6 +7,7 @@
  */
 import { planMerge, type MergeRows } from '../../src/lib/mergePlan'
 import { buildSeedRows } from '../../src/lib/seed'
+import { AVAILABILITY_ROWS_FOR_MIGRATION, GYM_SEEDS_FOR_MIGRATION } from './catalogSeed'
 import { norm } from '../../src/lib/seedPlan'
 import type { Exercise, Session, SetLog, TemplateExercise, WorkoutTemplate } from '../../src/lib/types'
 
@@ -257,5 +258,146 @@ export async function runDataDown(conn: Conn, adminEmail: string): Promise<void>
       await q(`ALTER TABLE ${t} ADD CONSTRAINT ${t}_pkey PRIMARY KEY (id)`)
       await q(`DROP INDEX IF EXISTS ${t}_pull_idx`)
     }
+  })
+}
+
+// ───────────── Etapa 3: catálogo global (F3) ─────────────
+
+export interface CatalogReport {
+  stage: 'catalog'
+  alreadyMigrated: boolean
+  adminId: string
+  legacyExercises: { admin: number; adminLive: number; others: number }
+  catalogExercisesLive: number
+  insertedSeedExercises: number
+  insertedGyms: number
+  insertedAvailability: number
+  danglingSetLogs: number
+  danglingTemplateExercises: number
+}
+
+const CATALOG_COLUMNS = `id text PRIMARY KEY, updated_at bigint NOT NULL, deleted_at bigint, synced_at bigint NOT NULL DEFAULT 0`
+
+/**
+ * Etapa 3. El catálogo pasa a ser global: los ejercicios del admin se copian a una tabla `exercises` sin user_id
+ * (mismos ids, así que series y rutinas siguen apuntando bien) y la tabla por usuario se conserva como
+ * `exercises_user_legacy` para poder revertir. Se cargan además los ejercicios nuevos del catálogo, los gimnasios y la
+ * disponibilidad. Una transacción; `dryRun` hace ROLLBACK. Si hubiera ejercicios de usuarios no admin se aborta (no se pierde
+ * nada: hay que decidir qué hacer con ellos).
+ */
+export async function runCatalogMigration(conn: Conn, opts: { adminEmail: string; dryRun: boolean; now?: number }): Promise<CatalogReport> {
+  const now = opts.now ?? Date.now()
+  class DryRun extends Error {}
+  let report!: CatalogReport
+  try {
+    await conn.transaction(async (q) => {
+      const [admin] = await q(`SELECT id FROM users WHERE email = $1 AND role = 'admin'`, [opts.adminEmail.trim().toLowerCase()])
+      if (!admin) throw new Error(`No existe la cuenta admin ${opts.adminEmail}`)
+      const adminId = admin.id as string
+      const hasUserId =
+        (await q(`SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'exercises' AND column_name = 'user_id'`)).length > 0
+      const none: CatalogReport = {
+        stage: 'catalog', alreadyMigrated: !hasUserId, adminId, legacyExercises: { admin: 0, adminLive: 0, others: 0 }, catalogExercisesLive: 0,
+        insertedSeedExercises: 0, insertedGyms: 0, insertedAvailability: 0, danglingSetLogs: 0, danglingTemplateExercises: 0,
+      }
+      const c = async (sql: string, params: unknown[] = []) => Number(((await q(sql, params))[0] as { c: unknown }).c)
+      if (!hasUserId) {
+        none.catalogExercisesLive = await c(`SELECT count(*) c FROM exercises WHERE deleted_at IS NULL`)
+        report = none
+        return
+      }
+      const pk = await pkColumns(q, 'set_logs')
+      if (!pk || pk.cols.length !== 2) throw new Error('Aplica antes la etapa `data` (claves compuestas).')
+      const legacy = {
+        admin: await c(`SELECT count(*) c FROM exercises WHERE user_id = $1`, [adminId]),
+        adminLive: await c(`SELECT count(*) c FROM exercises WHERE user_id = $1 AND deleted_at IS NULL`, [adminId]),
+        others: await c(`SELECT count(*) c FROM exercises WHERE user_id <> $1`, [adminId]),
+      }
+      if (legacy.others > 0) throw new Error(`Hay ${legacy.others} ejercicios de usuarios que no son el admin: decide qué hacer con ellos antes de migrar.`)
+
+      await q(`ALTER TABLE exercises RENAME TO exercises_user_legacy`)
+      await q(`ALTER TABLE exercises_user_legacy RENAME CONSTRAINT exercises_pk TO exercises_user_legacy_pk`)
+      await q(`ALTER INDEX exercises_pull_idx RENAME TO exercises_user_legacy_pull_idx`)
+      await q(
+        `CREATE TABLE exercises (${CATALOG_COLUMNS}, name text NOT NULL, primary_muscle text NOT NULL, secondary_muscles jsonb NOT NULL DEFAULT '[]', equipment text NOT NULL DEFAULT '', notes text NOT NULL DEFAULT '')`,
+      )
+      await q(`CREATE INDEX exercises_pull_idx ON exercises (synced_at)`)
+      // Se copian los ejercicios vivos y los borrados que NO duplican el nombre de uno vivo (un borrado deliberado del admin
+      // debe seguir constando para que no se vuelva a sembrar; los duplicados fusionados se quedan solo en la tabla antigua).
+      // synced_at = ahora: los dispositivos bajan el catálogo en su próximo pull.
+      const legacyRows = await q(`SELECT * FROM exercises_user_legacy WHERE user_id = $1`, [adminId])
+      const liveNames = new Set(legacyRows.filter((r) => r.deleted_at === null || r.deleted_at === undefined).map((r) => norm(r.name as string)))
+      for (const r of legacyRows) {
+        const dead = r.deleted_at !== null && r.deleted_at !== undefined
+        if (dead && liveNames.has(norm(r.name as string))) continue
+        await q(
+          `INSERT INTO exercises (id, updated_at, deleted_at, synced_at, name, primary_muscle, secondary_muscles, equipment, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [r.id, r.updated_at, r.deleted_at ?? null, now, r.name, r.primary_muscle, JSON.stringify(r.secondary_muscles ?? []), r.equipment, r.notes],
+        )
+      }
+
+      // Ejercicios nuevos del catálogo semilla (añadidos tras la primera importación), sin duplicar por nombre.
+      let insertedSeed = 0
+      for (const e of buildSeedRows().exercises) {
+        if (liveNames.has(norm(e.name))) continue
+        if ((await q(`SELECT 1 FROM exercises WHERE id = $1`, [e.id])).length) continue
+        await q(
+          `INSERT INTO exercises (id, updated_at, deleted_at, synced_at, name, primary_muscle, secondary_muscles, equipment, notes) VALUES ($1, $2, NULL, $2, $3, $4, $5, $6, '')`,
+          [e.id, now, e.name, e.primaryMuscle, JSON.stringify(e.secondaryMuscles), e.equipment],
+        )
+        liveNames.add(norm(e.name))
+        insertedSeed++
+      }
+
+      let gyms = 0
+      for (const g of GYM_SEEDS_FOR_MIGRATION) {
+        const r = await q(
+          `INSERT INTO gyms (id, updated_at, deleted_at, synced_at, name, notes, sort) VALUES ($1, $2, NULL, $2, $3, '', $4) ON CONFLICT (id) DO NOTHING RETURNING id`,
+          [g.id, now, g.name, g.sort],
+        )
+        gyms += r.length
+      }
+      let av = 0
+      for (const a of AVAILABILITY_ROWS_FOR_MIGRATION) {
+        if (!(await q(`SELECT 1 FROM exercises WHERE id = $1`, [a.exerciseId])).length) continue // solo ejercicios que existen en el catálogo
+        const r = await q(
+          `INSERT INTO exercise_gyms (id, updated_at, deleted_at, synced_at, exercise_id, gym_id, available) VALUES ($1, $2, NULL, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING RETURNING id`,
+          [`${a.exerciseId}:${a.gymId}`, now, a.exerciseId, a.gymId, a.available],
+        )
+        av += r.length
+      }
+
+      const dangling = await c(
+        `SELECT count(*) c FROM set_logs l WHERE l.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM exercises e WHERE e.id = l.exercise_id AND e.deleted_at IS NULL)`,
+      )
+      const danglingTe = await c(
+        `SELECT count(*) c FROM template_exercises t WHERE t.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM exercises e WHERE e.id = t.exercise_id AND e.deleted_at IS NULL)`,
+      )
+      const live = await c(`SELECT count(*) c FROM exercises WHERE deleted_at IS NULL`)
+      if (live !== legacy.adminLive + insertedSeed) throw new Error(`Recuento de ejercicios incoherente (${live} ≠ ${legacy.adminLive} + ${insertedSeed}), ROLLBACK`)
+      if (dangling || danglingTe) throw new Error(`Referencias colgantes tras migrar el catálogo (series ${dangling}, filas de rutina ${danglingTe}), ROLLBACK`)
+
+      report = {
+        ...none, alreadyMigrated: false, legacyExercises: legacy, catalogExercisesLive: live, insertedSeedExercises: insertedSeed,
+        insertedGyms: gyms, insertedAvailability: av, danglingSetLogs: dangling, danglingTemplateExercises: danglingTe,
+      }
+      if (opts.dryRun) throw new DryRun()
+    })
+  } catch (e) {
+    if (!(e instanceof DryRun)) throw e
+  }
+  return report
+}
+
+/** Revierte la etapa 3: recupera la tabla por usuario (los cambios hechos al catálogo después se pierden). */
+export async function runCatalogDown(conn: Conn): Promise<void> {
+  await conn.transaction(async (q) => {
+    if (!(await q(`SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'exercises_user_legacy'`)).length) {
+      throw new Error('No existe exercises_user_legacy: nada que revertir')
+    }
+    await q(`DROP TABLE exercises`)
+    await q(`ALTER TABLE exercises_user_legacy RENAME TO exercises`)
+    await q(`ALTER TABLE exercises RENAME CONSTRAINT exercises_user_legacy_pk TO exercises_pk`)
+    await q(`ALTER INDEX exercises_user_legacy_pull_idx RENAME TO exercises_pull_idx`)
   })
 }

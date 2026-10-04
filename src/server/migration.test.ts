@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import type { PGlite } from '@electric-sql/pglite'
 import { describe, expect, it, vi } from 'vitest'
 import { ensureAdmin } from '../../api/_lib/bootstrap'
-import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
+import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
 import { buildSeedRows } from '../lib/seed'
 import { makeTestDb } from './testServer'
 
@@ -178,6 +178,7 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
   it('el esquema resultante coincide con el de db/schema.ts (columnas, nulabilidad, claves e índices)', async () => {
     const { p, conn } = await setup(fixture())
     await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false })
+    await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false })
     const fresh = (await makeTestDb()).pglite
     const shape = async (db: PGlite) => {
       const cols = await q<{ t: string; c: string; ty: string; nn: string; d: string | null }>(
@@ -208,6 +209,46 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
     expect(await count(p, `SELECT count(*) c FROM information_schema.tables WHERE table_name = 'users'`)).toBe(0)
   })
 
+  it('etapa catálogo: ejercicios globales sin user_id, gimnasios y disponibilidad; las series siguen apuntando bien', async () => {
+    const { p, conn } = await setup(fixture())
+    await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 9000 })
+    const dry = await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: true, now: 9500 })
+    expect(await count(p, `SELECT count(*) c FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'user_id'`)).toBe(1) // el seco no cambió nada
+    const total = buildSeedRows().exercises.length
+    expect(dry).toMatchObject({ alreadyMigrated: false, legacyExercises: { adminLive: 35, others: 0 }, danglingSetLogs: 0, danglingTemplateExercises: 0 })
+    expect(dry.catalogExercisesLive).toBe(total) // 35 del admin + los ejercicios nuevos del catálogo semilla
+    expect(dry.insertedSeedExercises).toBe(total - 35)
+    expect(dry.insertedGyms).toBe(1)
+    expect(dry.insertedAvailability).toBeGreaterThan(30)
+
+    const done = await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 9500 })
+    expect(done.catalogExercisesLive).toBe(total)
+    expect(await count(p, `SELECT count(*) c FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'user_id'`)).toBe(0)
+    expect(await count(p, `SELECT count(*) c FROM exercises_user_legacy`)).toBe(70) // conservada (35 vivos + 35 borrados)
+    expect(await count(p, `SELECT count(*) c FROM gyms WHERE id = 'gym-forus' AND deleted_at IS NULL`)).toBe(1)
+    expect(await count(p, `SELECT count(*) c FROM exercise_gyms WHERE gym_id = 'gym-forus' AND id = exercise_id || ':' || gym_id`)).toBe(done.insertedAvailability)
+    // Todo apunta a un ejercicio vivo del catálogo; los datos del usuario siguen intactos.
+    expect(await count(p, `SELECT count(*) c FROM set_logs l WHERE l.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM exercises e WHERE e.id = l.exercise_id AND e.deleted_at IS NULL)`)).toBe(0)
+    expect(await count(p, `SELECT count(*) c FROM set_logs WHERE deleted_at IS NULL`)).toBe(21)
+    expect(await count(p, `SELECT count(*) c FROM exercises WHERE synced_at = 9500`)).toBe(total) // los dispositivos lo bajan en su próximo pull
+
+    const again = await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 99999 })
+    expect(again).toMatchObject({ alreadyMigrated: true })
+    expect(await count(p, `SELECT count(*) c FROM exercises WHERE synced_at = 99999`)).toBe(0)
+
+    await runCatalogDown(conn)
+    expect(await count(p, `SELECT count(*) c FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'user_id'`)).toBe(1)
+    expect(await count(p, `SELECT count(*) c FROM exercises`)).toBe(70)
+  })
+
+  it('etapa catálogo: aborta si hay ejercicios de usuarios que no son el admin', async () => {
+    const { p, conn } = await setup(fixture())
+    await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false })
+    await p.query(`INSERT INTO exercises (id, user_id, updated_at, name, primary_muscle) VALUES ('x', 'otro-usuario', 5, 'Curl raro', 'biceps')`)
+    await expect(runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false })).rejects.toThrow(/no son el admin/)
+    expect(await count(p, `SELECT count(*) c FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'user_id'`)).toBe(1)
+  })
+
   it.runIf(process.env.NEON_BACKUP)('sobre la copia real de Neon: informe de filas', async () => {
     const data = JSON.parse(readFileSync(process.env.NEON_BACKUP!, 'utf8')).changes as Backup
     const { p, conn } = await setup(data)
@@ -217,5 +258,9 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
     expect(report.after.sessionsLive).toBe(report.before.sessionsLive)
     expect(report.after.danglingSetLogs + report.after.danglingTemplateExercises + report.after.danglingSessions).toBe(0)
     expect(await count(p, `SELECT count(*) c FROM exercises WHERE user_id = 'owner'`)).toBeGreaterThan(0)
+    await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 2 })
+    const cat = await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: true, now: 3 })
+    console.log('INFORME CATALOGO', JSON.stringify(cat))
+    expect(cat.danglingSetLogs + cat.danglingTemplateExercises).toBe(0)
   })
 })

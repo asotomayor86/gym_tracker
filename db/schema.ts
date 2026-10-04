@@ -87,8 +87,9 @@ const perUser = (name: string) => (t: { userId: AnyPgColumn; id: AnyPgColumn; sy
   index(`${name}_pull_idx`).on(t.userId, t.syncedAt),
 ]
 
-export const exercises = pgTable(
-  'exercises',
+/** Copia de los ejercicios por usuario previos al catálogo global (F3). Solo lectura; se conserva para poder revertir. */
+export const exercisesUserLegacy = pgTable(
+  'exercises_user_legacy',
   {
     ...common(),
     name: text('name').notNull(),
@@ -97,7 +98,7 @@ export const exercises = pgTable(
     equipment: text('equipment').notNull().default(''),
     notes: text('notes').notNull().default(''),
   },
-  perUser('exercises'),
+  perUser('exercises_user_legacy'),
 )
 
 export const workoutTemplates = pgTable(
@@ -202,6 +203,20 @@ const catalog = () => ({
   syncedAt: ms('synced_at').notNull().default(0),
 })
 
+/** Catálogo global de ejercicios (sin user_id): lo lee todo el mundo y solo lo edita el admin. */
+export const exercises = pgTable(
+  'exercises',
+  {
+    ...catalog(),
+    name: text('name').notNull(),
+    primaryMuscle: text('primary_muscle').notNull(),
+    secondaryMuscles: jsonb('secondary_muscles').$type<string[]>().notNull().default([]),
+    equipment: text('equipment').notNull().default(''),
+    notes: text('notes').notNull().default(''),
+  },
+  (t) => [index('exercises_pull_idx').on(t.syncedAt)],
+)
+
 export const gyms = pgTable(
   'gyms',
   { ...catalog(), name: text('name').notNull(), notes: text('notes').notNull().default(''), sort: integer('sort').notNull().default(0) },
@@ -217,7 +232,6 @@ export const exerciseGyms = pgTable(
 
 /** Tablas sincronizadas por usuario (todas con user_id del token). */
 export const syncTables = {
-  exercises,
   workoutTemplates,
   templateExercises,
   sessions,
@@ -226,3 +240,6 @@ export const syncTables = {
   bodyWeights,
   userPrefs,
 } as const
+
+/** Tablas del catálogo global (sin user_id): solo el admin escribe; todos leen. */
+export const catalogTables = { exercises, gyms, exerciseGyms } as const

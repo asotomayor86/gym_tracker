@@ -1,6 +1,6 @@
 import Dexie, { type DexieOptions, type Table } from 'dexie'
 import type {
-  Biometric, BodyWeight, Exercise, Session, SetLog, SyncFields, TemplateExercise, UserPrefsRow, WorkoutTemplate,
+  Biometric, BodyWeight, Exercise, ExerciseGym, Gym, Session, SetLog, SyncFields, TemplateExercise, UserPrefsRow, WorkoutTemplate,
 } from '../lib/types'
 import type { SyncTable } from '../lib/syncTables'
 
@@ -19,6 +19,8 @@ export interface TableRows {
   biometrics: Biometric
   bodyWeights: BodyWeight
   userPrefs: UserPrefsRow
+  gyms: Gym
+  exerciseGyms: ExerciseGym
 }
 
 export class GymDB extends Dexie {
@@ -30,6 +32,8 @@ export class GymDB extends Dexie {
   biometrics!: Table<Biometric, string>
   bodyWeights!: Table<BodyWeight, string>
   userPrefs!: Table<UserPrefsRow, string>
+  gyms!: Table<Gym, string>
+  exerciseGyms!: Table<ExerciseGym, string>
   outbox!: Table<OutboxEntry, string>
 
   constructor(name = 'gym-tracker', options?: DexieOptions) {
@@ -44,6 +48,7 @@ export class GymDB extends Dexie {
       outbox: 'key',
     })
     this.version(2).stores({ bodyWeights: 'id, date', userPrefs: 'id' })
+    this.version(3).stores({ gyms: 'id', exerciseGyms: 'id, exerciseId, gymId' })
   }
 }
 

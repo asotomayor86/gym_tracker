@@ -1,9 +1,10 @@
 import { liveQuery, type Table } from 'dexie'
 import type { GymDB } from '../db/db'
 import { AuthError as ClientAuthError } from './authClient'
-import { SYNC_TABLES, type SyncTable } from './syncTables'
+import { CATALOG_TABLES, SYNC_TABLES, USER_TABLES, isCatalogTable, type SyncTable } from './syncTables'
 
 const CURSOR_KEY = 'gym-cursor'
+const CATALOG_CURSOR_KEY = 'gym-catalog-cursor'
 const LAST_SYNC_KEY = 'gym-last-sync'
 
 /** unauth = sin sesión (los datos solo están en este dispositivo); offline = sin red, se subirá solo al volver. */
@@ -28,6 +29,8 @@ export interface KeyValueStore {
 /** Lo que el motor necesita de la sesión (la implementa authClient). */
 export interface AuthPort {
   hasSession(): boolean
+  /** El catálogo global solo lo sube un admin. */
+  isAdmin(): boolean
   /** Token de acceso vigente; lanza AuthError('network') sin red o un AuthError distinto si la sesión terminó. */
   getAccessToken(): Promise<string>
   /** Fuerza renovar el token (tras un 401 del servidor). */
@@ -131,10 +134,17 @@ export function createSyncEngine(deps: SyncDeps) {
   }
 
   async function push() {
+    // El catálogo global solo lo escribe el admin: en el resto de cuentas esas entradas del outbox se descartan
+    // (p. ej. migraciones locales de ejercicios) y el servidor las rechazaría igualmente.
+    if (!deps.auth.isAdmin()) {
+      const keys = (await db.outbox.toArray()).filter((e) => isCatalogTable(e.table)).map((e) => e.key)
+      if (keys.length) await db.outbox.bulkDelete(keys)
+    }
     const outbox = await db.outbox.toArray()
     for (let i = 0; i < outbox.length; i += PUSH_CHUNK) {
       const chunk = outbox.slice(i, i + PUSH_CHUNK)
       const changes: Record<string, Row[]> = {}
+      const catalog: Record<string, Row[]> = {}
       const sent = new Map<string, number>()
       for (const entry of chunk) {
         const row = await (db[entry.table] as Table<Row, string>).get(entry.id)
@@ -142,12 +152,12 @@ export function createSyncEngine(deps: SyncDeps) {
           await db.outbox.delete(entry.key)
           continue
         }
-        const list = (changes[entry.table] ??= [])
+        const list = ((isCatalogTable(entry.table) ? catalog : changes)[entry.table] ??= [])
         list.push(row)
         sent.set(entry.key, row.updatedAt)
       }
       if (!sent.size) continue
-      await api('/api/sync/push', { method: 'POST', body: JSON.stringify({ changes }) })
+      await api('/api/sync/push', { method: 'POST', body: JSON.stringify({ changes, catalog }) })
       // Solo se descarta lo que no cambió mientras se enviaba.
       for (const entry of chunk) {
         if (!sent.has(entry.key)) continue
@@ -160,18 +170,24 @@ export function createSyncEngine(deps: SyncDeps) {
 
   async function pull() {
     const since = Number(storage.get(CURSOR_KEY)) || 0
-    const { changes, cursor } = (await api(`/api/sync/pull?since=${since}`)) as {
-      changes: Record<SyncTable, Row[]>
+    const catalogSince = Number(storage.get(CATALOG_CURSOR_KEY)) || 0
+    const { changes, cursor, catalog, catalogCursor } = (await api(`/api/sync/pull?since=${since}&catalogSince=${catalogSince}`)) as {
+      changes: Record<string, Row[]>
       cursor: number
+      catalog?: Record<string, Row[]>
+      catalogCursor?: number
     }
-    for (const name of SYNC_TABLES) {
+    const apply = async (name: SyncTable, rows: Row[] | undefined) => {
       const table = db[name] as Table<Row, string>
-      for (const remote of changes[name] ?? []) {
+      for (const remote of rows ?? []) {
         const local = await table.get(remote.id)
         if (!local || local.updatedAt < remote.updatedAt) await table.put(remote)
       }
     }
+    for (const name of USER_TABLES) await apply(name, changes[name])
+    for (const name of CATALOG_TABLES) await apply(name, catalog?.[name])
     storage.set(CURSOR_KEY, String(cursor))
+    if (catalogCursor !== undefined) storage.set(CATALOG_CURSOR_KEY, String(catalogCursor))
   }
 
   let running: Promise<void> | null = null

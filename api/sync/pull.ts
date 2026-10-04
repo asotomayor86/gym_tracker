@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { and, eq, gt } from 'drizzle-orm'
 import { syncTables } from '../../db/schema.js'
 import { authenticate } from '../_lib/authService.js'
+import { pullCatalog } from '../_lib/catalog.js'
 import { db } from '../_lib/db.js'
 import { bearer, respond } from '../_lib/http.js'
 
@@ -22,6 +23,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .limit(5000)
       changes[name] = rows.map(({ userId: _u, syncedAt: _s, ...rest }) => rest)
     }
-    return { body: { changes, cursor } }
+    const catalogSince = Number(req.query.catalogSince) || 0
+    const catalog = await pullCatalog(db, catalogSince)
+    return { body: { changes, cursor, catalog, catalogCursor: cursor } }
   })
 }

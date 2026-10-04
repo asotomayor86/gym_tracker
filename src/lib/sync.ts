@@ -3,6 +3,7 @@ import { db } from '../db/db'
 import { createAccount } from './account'
 import { createAuthClient } from './authClient'
 import { ensureSeed } from './ensureSeed'
+import { bindPrefsToDb } from './prefs'
 import { createSyncEngine, type KeyValueStore } from './syncEngine'
 
 export type { SyncState, SyncStatus } from './syncEngine'
@@ -32,12 +33,13 @@ const engine = createSyncEngine({
   isOnline: () => navigator.onLine,
   auth: {
     hasSession: authClient.hasSession,
+    isAdmin: () => authClient.currentUser()?.role === 'admin',
     getAccessToken: authClient.getAccessToken,
     refresh: authClient.refresh,
     expire: () => authClient.clear('session_expired'),
     subscribe: authClient.subscribe,
   },
-  afterSync: (ok) => ensureSeed({ merge: ok }),
+  afterSync: (ok) => ensureSeed({ merge: ok, prefs: ok }),
 })
 
 export const account = createAccount({
@@ -49,6 +51,7 @@ export const account = createAccount({
   afterWipe: () => ensureSeed({ merge: false }),
   hadLegacyToken,
 })
+bindPrefsToDb(db)
 void account.init()
 
 export const useSyncState = () => useSyncExternalStore(engine.subscribe, engine.getState)

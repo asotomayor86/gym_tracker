@@ -88,3 +88,17 @@ export interface UserPrefsRow extends SyncFields {
   incrementKg: number
   gymId: string | null
 }
+
+/** Gimnasio del catálogo global (lo edita el admin). */
+export interface Gym extends SyncFields {
+  name: string
+  notes: string
+  sort: number
+}
+
+/** Disponibilidad de un ejercicio en un gimnasio. id = `${exerciseId}:${gymId}`. Sin fila = "sin verificar". */
+export interface ExerciseGym extends SyncFields {
+  exerciseId: string
+  gymId: string
+  available: boolean
+}

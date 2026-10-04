@@ -18,3 +18,18 @@ Todo se ejecuta desde la raíz con el `.env` local (`DATABASE_URL_UNPOOLED`, `AD
 - Antes del paso 4: nada que deshacer (las tablas nuevas no molestan); `schema` se revierte con `down-schema --apply`.
 - Después del paso 4 y antes de desplegar: `down-data --apply` devuelve propietario `owner` y clave simple (NO deshace la fusión de duplicados: para eso, restaurar la rama de Neon).
 - Tras desplegar: promover el despliegue anterior en Vercel y restaurar la rama `pre-multiusuario` (se pierden los cambios hechos desde la copia; los dispositivos conservan su outbox).
+
+---
+
+# F3: catálogo global, gimnasios y disponibilidad (etapa `catalog`)
+
+Requisitos: F0–F2 ya aplicadas. **Orden**:
+0. Copia: rama de Neon + volcado JSON reciente.
+1. En seco: `npx tsx scripts/migrate-multiuser.ts catalog` → revisar el informe:
+   `legacyExercises.others` debe ser 0 (si no, aborta: hay ejercicios de otros usuarios que decidir), `catalogExercisesLive` = ejercicios vivos del admin + `insertedSeedExercises`, `danglingSetLogs`/`danglingTemplateExercises` = 0, `insertedGyms` = nº de gimnasios de `gymData.ts`, `insertedAvailability` = filas de disponibilidad.
+2. `npx tsx scripts/migrate-multiuser.ts catalog --apply` (una transacción; revierte sola si falla un invariante). La tabla antigua queda como `exercises_user_legacy`.
+3. **Desplegar inmediatamente** API + cliente de F3 (entre 2 y 3 la API anterior falla en `exercises`: segundos).
+4. Smoke test: login admin; pull con `catalog.exercises/gyms/exerciseGyms`; un usuario normal recibe el catálogo y recibe 403 si intenta escribirlo.
+
+**Rollback**: `down-catalog --apply` recupera la tabla por usuario (los cambios hechos al catálogo después se pierden) + promover el despliegue anterior; o restaurar la rama de Neon.
+**Cliente**: Dexie v3 (tablas `gyms`, `exerciseGyms`; solo añade). Los clientes antiguos siguen funcionando para sus datos (ignoran el catálogo nuevo) hasta actualizarse.

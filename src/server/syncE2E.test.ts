@@ -10,6 +10,7 @@ import { ensureAdmin } from '../../api/_lib/bootstrap'
 import { GymDB, alive, saveTo } from '../db/db'
 import { createAccount } from '../lib/account'
 import { AuthError, createAuthClient } from '../lib/authClient'
+import { availabilityFor, saveGym, seedGyms, setAvailability } from '../lib/gyms'
 import { buildSeedRows } from '../lib/seed'
 import { planSeed } from '../lib/seedPlan'
 import { createSyncEngine, type KeyValueStore } from '../lib/syncEngine'
@@ -52,7 +53,7 @@ const device = () => {
   const auth = createAuthClient({ storage, fetch: serverFetch })
   const engine = createSyncEngine({
     db, storage, fetch: serverFetch, isOnline: () => online, debounceMs: 20, retryMs: [20],
-    auth: { hasSession: auth.hasSession, getAccessToken: auth.getAccessToken, refresh: auth.refresh, expire: () => auth.clear('session_expired'), subscribe: auth.subscribe },
+    auth: { hasSession: auth.hasSession, isAdmin: () => auth.currentUser()?.role === 'admin', getAccessToken: auth.getAccessToken, refresh: auth.refresh, expire: () => auth.clear('session_expired'), subscribe: auth.subscribe },
   })
   const account = createAccount({ db, storage, auth, syncNow: engine.syncNow, resetSync: engine.reset })
   return { db, storage, auth, engine, account }
@@ -93,7 +94,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   online = true
-  await holder.t!.pglite.exec('TRUNCATE users, auth_sessions, invitations, login_attempts, exercises, workout_templates, template_exercises, sessions, set_logs, biometrics, body_weights, user_prefs')
+  await holder.t!.pglite.exec('TRUNCATE users, auth_sessions, invitations, login_attempts, exercises, gyms, exercise_gyms, workout_templates, template_exercises, sessions, set_logs, biometrics, body_weights, user_prefs')
   await ensureAdmin(holder.t!.db as Db, { email: ADMIN, password: PW })
 })
 
@@ -337,5 +338,59 @@ describe('cuentas y datos locales', () => {
     A.storage.set('gym-token', 'jwt-viejo')
     expect(A.auth.dropLegacyToken()).toBe(true)
     expect(A.storage.get('gym-token')).toBeNull()
+  })
+})
+
+describe('catálogo global y preferencias (sync)', () => {
+  it('lo que edita el admin (ejercicios, gimnasios, disponibilidad) llega a los demás usuarios', async () => {
+    const admin = await loginAdmin()
+    await saveGym({ id: 'gym-forus', name: 'Forus' }, admin.db)
+    await saveTo(admin.db, 'exercises', { id: 'seed-ex-prensa-de-piernas', name: 'Prensa de piernas', primaryMuscle: 'cuadriceps', secondaryMuscles: [], equipment: 'Máquina', notes: 'catálogo' })
+    await setAvailability('seed-ex-prensa-de-piernas', 'gym-forus', false, admin.db)
+    await admin.engine.syncNow()
+
+    const user = await registerUser('u@example.com')
+    await user.engine.syncNow()
+    expect((await user.db.gyms.get('gym-forus'))?.name).toBe('Forus')
+    expect((await user.db.exercises.get('seed-ex-prensa-de-piernas'))?.notes).toBe('catálogo')
+    expect(availabilityFor('gym-forus', 'seed-ex-prensa-de-piernas', await user.db.exerciseGyms.toArray())).toBe('unavailable')
+  })
+
+  it('un usuario normal no sube catálogo: sus cambios locales se descartan del outbox y el servidor no cambia', async () => {
+    const user = await registerUser('u@example.com')
+    await saveTo(user.db, 'exercises', { id: 'mio', name: 'Ejercicio mío', primaryMuscle: 'pecho', secondaryMuscles: [], equipment: '', notes: '' })
+    await saveTo(user.db, 'sessions', session('s-user'))
+    await user.engine.syncNow()
+    expect(user.engine.getState()).toMatchObject({ status: 'ok', pending: 0 })
+    expect(await holder.t!.pglite.query('select id from exercises')).toMatchObject({ rows: [] })
+    expect(await holder.t!.pglite.query('select id from sessions')).toMatchObject({ rows: [{ id: 's-user' }] })
+  })
+
+  it('las filas semilla de gimnasios/disponibilidad sirven offline y el catálogo del servidor las sustituye', async () => {
+    const admin = await loginAdmin()
+    await setAvailability('seed-ex-prensa-de-piernas', 'gym-forus', false, admin.db)
+    await saveGym({ id: 'gym-forus', name: 'Forus Centro' }, admin.db)
+    await admin.engine.syncNow()
+
+    const dev = device()
+    await seedGyms(dev.db)
+    expect(availabilityFor('gym-forus', 'seed-ex-prensa-de-piernas', await dev.db.exerciseGyms.toArray())).toBe('available') // semilla
+    await dev.account.init()
+    await dev.account.login(ADMIN, PW)
+    await settle(dev)
+    expect(availabilityFor('gym-forus', 'seed-ex-prensa-de-piernas', await dev.db.exerciseGyms.toArray())).toBe('unavailable') // servidor
+    expect((await dev.db.gyms.get('gym-forus'))?.name).toBe('Forus Centro')
+    expect(await dev.db.outbox.count()).toBe(0) // las semillas no se encolan ni se suben
+  })
+
+  it('las preferencias (gimnasio habitual, unidad) viajan entre dispositivos de la misma cuenta', async () => {
+    const A = await loginAdmin()
+    const B = await loginAdmin()
+    await saveTo(A.db, 'userPrefs', { id: 'prefs', unit: 'lb', incrementKg: 5, gymId: 'gym-forus' })
+    await A.engine.syncNow()
+    await B.engine.syncNow()
+    expect(await B.db.userPrefs.get('prefs')).toMatchObject({ unit: 'lb', incrementKg: 5, gymId: 'gym-forus' })
+    const other = await registerUser('u@example.com')
+    expect(await other.db.userPrefs.get('prefs')).toBeUndefined() // aisladas por usuario
   })
 })

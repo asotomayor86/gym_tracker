@@ -20,6 +20,7 @@ export interface AccountState {
 
 const OWNER_KEY = 'gym-owner'
 const CURSOR_KEY = 'gym-cursor'
+const CATALOG_CURSOR_KEY = 'gym-catalog-cursor'
 const LAST_SYNC_KEY = 'gym-last-sync'
 
 export interface AccountDeps {
@@ -84,6 +85,7 @@ export function createAccount(deps: AccountDeps) {
       await db.outbox.clear()
     })
     storage.del(CURSOR_KEY)
+    storage.del(CATALOG_CURSOR_KEY)
     storage.del(LAST_SYNC_KEY)
     await deps.afterWipe?.()
   }
@@ -108,7 +110,10 @@ export function createAccount(deps: AccountDeps) {
     }
     if (foreign) await wipeLocal()
     // Dispositivo "heredado" reclamado por el admin: se rehace el pull completo (cursor de la versión anterior).
-    if (!owner) storage.del(CURSOR_KEY)
+    if (!owner) {
+      storage.del(CURSOR_KEY)
+      storage.del(CATALOG_CURSOR_KEY)
+    }
     await adopt(session)
   }
 

@@ -7,13 +7,16 @@
  *   npx tsx scripts/migrate-multiuser.ts data                   informe EXACTO de filas en seco (ROLLBACK, no toca nada)
  *   npx tsx scripts/migrate-multiuser.ts data --apply --backup-file <volcado.json>
  *                                                               etapa 2 (una transacción; exige la copia JSON reciente)
+ *   npx tsx scripts/migrate-multiuser.ts catalog                informe en seco de la etapa 3 (catálogo global, gimnasios, disponibilidad)
+ *   npx tsx scripts/migrate-multiuser.ts catalog --apply        etapa 3 (una transacción)
+ *   npx tsx scripts/migrate-multiuser.ts down-catalog --apply   recupera la tabla de ejercicios por usuario
  *   npx tsx scripts/migrate-multiuser.ts down-data --apply      revierte propietario y claves (no la fusión: usa la rama de Neon)
  *   npx tsx scripts/migrate-multiuser.ts down-schema --apply    elimina las tablas nuevas
  */
 import 'dotenv/config'
 import { existsSync, readFileSync } from 'node:fs'
 import { Pool, neonConfig } from '@neondatabase/serverless'
-import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runDataDown, runDataMigration } from './migration/multiuser'
+import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runDataDown, runDataMigration } from './migration/multiuser'
 
 const [stage, ...flags] = process.argv.slice(2)
 const apply = flags.includes('--apply')
@@ -72,12 +75,21 @@ try {
     const report = await runDataMigration(conn, { adminEmail, dryRun: !apply })
     console.log(JSON.stringify(report, null, 2))
     console.log(apply ? 'Migración APLICADA.' : 'Informe en seco: no se ha modificado nada.')
+  } else if (stage === 'catalog') {
+    if (!adminEmail) throw new Error('Falta ADMIN_EMAIL en el .env')
+    const report = await runCatalogMigration(conn, { adminEmail, dryRun: !apply })
+    console.log(JSON.stringify(report, null, 2))
+    console.log(apply ? 'Catálogo migrado.' : 'Informe en seco: no se ha modificado nada.')
+  } else if (stage === 'down-catalog') {
+    if (!apply) throw new Error('down-catalog exige --apply')
+    await runCatalogDown(conn)
+    console.log('down-catalog aplicado.')
   } else if (stage === 'down-data') {
     if (!apply || !adminEmail) throw new Error('down-data exige --apply y ADMIN_EMAIL')
     await runDataDown(conn, adminEmail)
     console.log('down-data aplicado.')
   } else {
-    throw new Error('Uso: schema | data | down-data | down-schema  [--apply] [--backup-file ruta]')
+    throw new Error('Uso: schema | data | catalog | down-catalog | down-data | down-schema  [--apply] [--backup-file ruta]')
   }
 } finally {
   await pool.end()
