@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { authMessage } from './authShim'
+import { authMessage } from './authMessage'
 
 /** Envoltorio de formulario con estado: ocupado, error y reintento. */
 export function useSubmit(action: () => Promise<void>) {
