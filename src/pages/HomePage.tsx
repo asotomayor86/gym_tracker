@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { WeightCard } from './BodyWeightPage'
+import { CreateRoutineButton } from '../components/CreateRoutine'
 import { Button, EmptyState, HeatBar, Page, SectionTitle } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS, fmtDate } from '../lib/labels'
@@ -82,8 +83,8 @@ export default function HomePage() {
           <SectionTitle n="03">Últimas sesiones</SectionTitle>
           <ul className="glass-flat divide-y divide-hair overflow-hidden">
             {recent.map((s) => (
-              <li key={s.id}>
-                <Link to={`/session/${s.id}`} className="flex items-baseline gap-3 px-4 py-3.5 hover:bg-ink/5">
+              <li key={s.id} className="flex items-center hover:bg-ink/5">
+                <Link to={`/session/${s.id}`} className="flex min-w-0 flex-1 items-baseline gap-3 py-3.5 pl-4">
                   <span className="w-24 shrink-0 text-xs uppercase tracking-wider text-mute">{fmtDate(s.startedAt)}</span>
                   <span className="flex-1 font-semibold">{tName(s.templateId)}</span>
                   <span className="num text-sm">
@@ -91,6 +92,7 @@ export default function HomePage() {
                     <span className="text-xs font-normal text-mute"> ser.</span>
                   </span>
                 </Link>
+                <CreateRoutineButton sessionId={s.id} startedAt={s.startedAt} className="mx-3 shrink-0" />
               </li>
             ))}
           </ul>

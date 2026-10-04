@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { CreateRoutineButton } from '../components/CreateRoutine'
 import { GuideToggle } from '../components/ExerciseGuideView'
 import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
@@ -183,6 +184,7 @@ export default function SessionPage() {
       <div className="flex gap-2">
         {!finished && <Button className="flex-1" onClick={finish}>Terminar sesión</Button>}
         {finished && <Button className="flex-1" variant="ghost" onClick={() => navigate('/')}>Volver</Button>}
+        {finished && <CreateRoutineButton sessionId={session.id} startedAt={session.startedAt} className="shrink-0 !min-h-11 text-sm" />}
         <Button variant="danger" onClick={discard}>Descartar</Button>
       </div>
 

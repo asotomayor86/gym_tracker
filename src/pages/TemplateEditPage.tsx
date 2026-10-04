@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
@@ -15,6 +15,7 @@ const num = (v: string, fallback: number) => (Number.isFinite(parseFloat(v)) ? p
 export default function TemplateEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const justCreated = !!(useLocation().state as { created?: boolean } | null)?.created
   const { unit } = usePrefs()
   const template = useLiveQuery(() => db.workoutTemplates.get(id!), [id])
   const rows = useLiveQuery(
@@ -73,6 +74,7 @@ export default function TemplateEditPage() {
         </div>
       }
     >
+      {justCreated && <p role="status" className="rounded-xl bg-signal/10 px-3 py-2 text-sm"><b className="text-signal-text">Rutina creada</b> a partir de la sesión. Ajusta lo que quieras.</p>}
       <CommitInput
         value={template.name}
         className={`${inputCls} display !text-xl !min-h-14`}
