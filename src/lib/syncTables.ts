@@ -5,5 +5,7 @@ export const SYNC_TABLES = [
   'sessions',
   'setLogs',
   'biometrics',
+  'bodyWeights',
+  'userPrefs',
 ] as const
 export type SyncTable = (typeof SYNC_TABLES)[number]

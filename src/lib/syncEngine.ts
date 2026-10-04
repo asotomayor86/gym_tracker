@@ -1,8 +1,8 @@
 import { liveQuery, type Table } from 'dexie'
 import type { GymDB } from '../db/db'
+import { AuthError as ClientAuthError } from './authClient'
 import { SYNC_TABLES, type SyncTable } from './syncTables'
 
-const TOKEN_KEY = 'gym-token'
 const CURSOR_KEY = 'gym-cursor'
 const LAST_SYNC_KEY = 'gym-last-sync'
 
@@ -25,9 +25,22 @@ export interface KeyValueStore {
   del(key: string): void
 }
 
+/** Lo que el motor necesita de la sesión (la implementa authClient). */
+export interface AuthPort {
+  hasSession(): boolean
+  /** Token de acceso vigente; lanza AuthError('network') sin red o un AuthError distinto si la sesión terminó. */
+  getAccessToken(): Promise<string>
+  /** Fuerza renovar el token (tras un 401 del servidor). */
+  refresh(): Promise<void>
+  /** Expulsa la sesión (el servidor la rechaza pese a renovar). */
+  expire(): void
+  subscribe(cb: () => void): () => void
+}
+
 export interface SyncDeps {
   db: GymDB
   storage: KeyValueStore
+  auth: AuthPort
   fetch: typeof fetch
   isOnline: () => boolean
   /** Se ejecuta tras cada intento de sync (ok = pull correcto): reconcilia semilla/datos con lo descargado. */
@@ -58,7 +71,7 @@ export function createSyncEngine(deps: SyncDeps) {
   }
   const listeners = new Set<() => void>()
 
-  const hasToken = () => !!storage.get(TOKEN_KEY)
+  const hasToken = () => deps.auth.hasSession()
   const publish = (patch: Partial<SyncState> = {}) => {
     const loggedIn = hasToken()
     state = { ...state, ...patch, loggedIn, status: loggedIn ? phase : 'unauth', error }
@@ -76,17 +89,34 @@ export function createSyncEngine(deps: SyncDeps) {
     timer = setTimeout(() => void syncNow(), ms)
   }
 
-  async function api(path: string, init?: RequestInit) {
+  async function api(path: string, init?: RequestInit, retried = false): Promise<any> {
+    let token: string
+    try {
+      token = await deps.auth.getAccessToken()
+    } catch (e) {
+      if (e instanceof ClientAuthError && e.code === 'network') throw new NetworkError('Sin conexión')
+      throw new AuthError()
+    }
     let res: Response
     try {
-      res = await deps.fetch(path, {
-        ...init,
-        headers: { ...init?.headers, authorization: `Bearer ${storage.get(TOKEN_KEY)}`, 'content-type': 'application/json' },
-      })
+      res = await deps.fetch(path, { ...init, headers: { ...init?.headers, authorization: `Bearer ${token}`, 'content-type': 'application/json' } })
     } catch {
       throw new NetworkError('Sin conexión')
     }
-    if (res.status === 401) throw new AuthError()
+    if (res.status === 401) {
+      // Token de acceso caducado o revocado: se intenta renovar una vez; si el servidor sigue rechazando, la sesión terminó.
+      if (!retried) {
+        try {
+          await deps.auth.refresh()
+        } catch (e) {
+          if (e instanceof ClientAuthError && e.code === 'network') throw new NetworkError('Sin conexión')
+          throw new AuthError()
+        }
+        return api(path, init, true)
+      }
+      deps.auth.expire()
+      throw new AuthError()
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
   }
@@ -130,10 +160,9 @@ export function createSyncEngine(deps: SyncDeps) {
 
   async function pull() {
     const since = Number(storage.get(CURSOR_KEY)) || 0
-    const { changes, cursor, token } = (await api(`/api/sync/pull?since=${since}`)) as {
+    const { changes, cursor } = (await api(`/api/sync/pull?since=${since}`)) as {
       changes: Record<SyncTable, Row[]>
       cursor: number
-      token?: string
     }
     for (const name of SYNC_TABLES) {
       const table = db[name] as Table<Row, string>
@@ -143,7 +172,6 @@ export function createSyncEngine(deps: SyncDeps) {
       }
     }
     storage.set(CURSOR_KEY, String(cursor))
-    if (token) storage.set(TOKEN_KEY, token) // renovación de sesión
   }
 
   let running: Promise<void> | null = null
@@ -171,9 +199,8 @@ export function createSyncEngine(deps: SyncDeps) {
       publish({ lastSync })
     } catch (e) {
       if (e instanceof AuthError) {
-        storage.del(TOKEN_KEY)
-        phase = 'idle'
-        error = 'Sesión caducada: vuelve a iniciar sesión'
+        phase = 'idle' // sin sesión: el estado pasa a 'unauth' y el outbox se conserva
+        error = null
       } else {
         const offline = e instanceof NetworkError || !deps.isOnline()
         phase = offline ? 'offline' : 'error'
@@ -189,32 +216,20 @@ export function createSyncEngine(deps: SyncDeps) {
     }
   }
 
-  async function login(password: string): Promise<void> {
-    let res: Response
-    try {
-      res = await deps.fetch('/api/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
-    } catch {
-      throw new Error('Sin conexión: no se puede iniciar sesión')
-    }
-    if (!res.ok) throw new Error(res.status === 401 ? 'Contraseña incorrecta' : 'No se pudo conectar')
-    storage.set(TOKEN_KEY, (await res.json()).token)
-    error = null
+  /** Tras cerrar sesión o cambiar de cuenta: cancela temporizadores y limpia el estado. */
+  function reset() {
+    clearTimeout(timer)
+    failures = 0
     phase = 'idle'
-    publish()
-    await syncNow()
+    error = null
+    storage.del(LAST_SYNC_KEY)
+    publish({ lastSync: null })
   }
 
-  function logout() {
-    clearTimeout(timer)
-    storage.del(TOKEN_KEY)
-    phase = 'idle'
-    error = null
+  deps.auth.subscribe(() => {
+    if (!hasToken()) clearTimeout(timer)
     publish()
-  }
+  })
 
   // ── arranque: triggers automáticos ──
   let stop: (() => void) | undefined
@@ -262,6 +277,6 @@ export function createSyncEngine(deps: SyncDeps) {
     hasToken,
     /** Con sesión iniciada pero sin ningún pull aún, conviene esperar al servidor antes de sembrar (evita duplicados). */
     awaitsFirstSync: () => hasToken() && !storage.get(CURSOR_KEY),
-    login, logout, syncNow, start,
+    syncNow, start, reset,
   }
 }

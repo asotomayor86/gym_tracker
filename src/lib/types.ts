@@ -73,3 +73,18 @@ export interface Biometric extends SyncFields {
   recordedAt: number
   source: string
 }
+
+/** Peso corporal: un registro por día (id = `bw-${date}`), siempre en kg. */
+export interface BodyWeight extends SyncFields {
+  /** Día local, formato YYYY-MM-DD. */
+  date: string
+  weightKg: number
+  note: string
+}
+
+/** Preferencias del usuario sincronizadas: una sola fila con id 'prefs'. */
+export interface UserPrefsRow extends SyncFields {
+  unit: Unit
+  incrementKg: number
+  gymId: string | null
+}
