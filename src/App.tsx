@@ -2,10 +2,8 @@ import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { ForcedPasswordChange } from './components/auth/AccountSection'
 import { useAuth } from './components/auth/authShim'
-import { bodyWeightReady } from './components/weight/weightData'
 import { NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
-import { adminReady } from './components/admin/adminShim'
 import AdminPage from './pages/AdminPage'
 import BodyWeightPage from './pages/BodyWeightPage'
 import HomePage from './pages/HomePage'
@@ -48,7 +46,7 @@ export default function App() {
       <Bare>
         <Routes>
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
-          {adminReady() && <Route path="/admin" element={<AdminPage />} />}
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<LoginPage />} />
         </Routes>
       </Bare>
@@ -98,7 +96,7 @@ function MainApp() {
           <Route path="/templates/:id" element={<TemplateEditPage />} />
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/stats" element={<StatsPage />} />
-          {bodyWeightReady() && <Route path="/peso" element={<BodyWeightPage />} />}
+          <Route path="/peso" element={<BodyWeightPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { adminReady } from '../admin/adminShim'
 import { Button, SectionTitle } from '../ui'
 import { AuthShell, Field, FormError, Notice, PasswordHelp, PasswordInput, SubmitButton } from './AuthUI'
 import { useAuth, validatePassword } from './authShim'
@@ -71,7 +70,7 @@ export default function AccountSection() {
         </div>
       </div>
 
-      {auth.isAdmin && adminReady() && <Link to="/admin" className="press flex items-center justify-between rounded-2xl border border-signal/50 bg-signal/10 px-4 py-3 text-sm font-semibold">Administración: invitaciones y usuarios <span aria-hidden>→</span></Link>}
+      {auth.isAdmin && <Link to="/admin" className="press flex items-center justify-between rounded-2xl border border-signal/50 bg-signal/10 px-4 py-3 text-sm font-semibold">Administración: invitaciones y usuarios <span aria-hidden>→</span></Link>}
 
       {changing ? (
         <ChangePasswordForm onCancel={() => setChanging(false)} onDone={() => setChanging(false)} />

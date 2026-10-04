@@ -21,6 +21,13 @@ const STATUS: Record<Invitation['status'], { label: string; cls: string }> = {
   expired: { label: 'Caducada', cls: 'border-hair text-mute' },
   revoked: { label: 'Revocada', cls: 'border-e-fail/50 text-e-fail' },
 }
+const adminMsg = (e: unknown) => {
+  const code = (e as { code?: string })?.code
+  if (code === 'cannot_demote_self') return 'No puedes quitarte a ti mismo el rol de administrador.'
+  if (code === 'forbidden') return 'Solo los administradores pueden hacer esto.'
+  if (code === 'network') return 'Sin conexión: la administración necesita red.'
+  return 'No se pudo completar la acción.'
+}
 const ROLE_LABEL: Record<Role, string> = { admin: 'Administrador', user: 'Usuario' }
 
 function useLoad<T>(fn: () => Promise<T>) {
@@ -65,10 +72,11 @@ function Invitations() {
   const [role, setRole] = useState<Role>('user')
   const [days, setDays] = useState(7)
   const [busy, setBusy] = useState(false)
+  const [createErr, setCreateErr] = useState('')
   const [created, setCreated] = useState<{ url: string; expiresAt: number } | null>(null)
   const create = async () => {
-    setBusy(true)
-    try { const r = await createInvitation({ role, days }); setCreated({ url: `${location.origin}/invitacion/${r.code}`, expiresAt: r.expiresAt }); reload() } finally { setBusy(false) }
+    setBusy(true); setCreateErr('')
+    try { const r = await createInvitation({ role, days }); setCreated({ url: `${location.origin}/invitacion/${r.code}`, expiresAt: r.expiresAt }); reload() } catch (e) { setCreateErr(adminMsg(e)) } finally { setBusy(false) }
   }
   return (
     <div className="space-y-5">
@@ -87,6 +95,7 @@ function Invitations() {
             </select>
           </label>
         </div>
+        {createErr && <p role="alert" className="text-sm text-e-fail">{createErr}</p>}
         <Button onClick={create} disabled={busy}>{busy ? 'Creando…' : 'Crear enlace de invitación'}</Button>
         {created && <Secret title="Enlace de invitación" value={created.url} note={`Caduca el ${dateFmt(created.expiresAt)}. El enlace solo se muestra ahora: cópialo antes de cerrar este aviso.`} onClose={() => setCreated(null)} />}
       </section>
@@ -119,7 +128,8 @@ function UserCard({ u, me, onChanged }: { u: AdminUser; me: boolean; onChanged: 
   const [step, setStep] = useState<null | 'reset' | 'logout'>(null)
   const [busy, setBusy] = useState(false)
   const [temp, setTemp] = useState<string | null>(null)
-  const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); onChanged() } finally { setBusy(false); setStep(null) } }
+  const [err, setErr] = useState('')
+  const act = async (fn: () => Promise<void>) => { setBusy(true); setErr(''); try { await fn(); onChanged() } catch (e) { setErr(adminMsg(e)) } finally { setBusy(false); setStep(null) } }
   return (
     <li className="glass space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -132,6 +142,7 @@ function UserCard({ u, me, onChanged }: { u: AdminUser; me: boolean; onChanged: 
       </div>
       <p className="text-xs text-mute">Alta {dateFmt(u.createdAt)} · último acceso {ago(u.lastLoginAt)} · {u.sessions} {u.sessions === 1 ? 'sesión' : 'sesiones'}</p>
       {temp && <Secret title="Contraseña temporal" value={temp} note="Se muestra una sola vez. La persona tendrá que cambiarla al entrar, y sus sesiones anteriores se han cerrado." onClose={() => setTemp(null)} />}
+      {err && <p role="alert" className="text-sm text-e-fail">{err}</p>}
       {!me && (
         <div className="flex flex-wrap gap-2">
           <select aria-label={`Rol de ${u.email}`} className={`${inputCls} !min-h-9 w-auto py-1 text-sm`} value={u.role} disabled={busy} onChange={(e) => act(() => updateUser(u.id, { role: e.target.value as Role }))}>
@@ -165,13 +176,11 @@ const TABS: { k: 'inv' | 'users'; label: string; node: ReactNode }[] = [
 ]
 
 /** Panel de administración (solo role = admin): invitaciones y usuarios. */
-/** En desarrollo, ?devauth permite ver el panel sin cuenta de administrador. */
-const devAdmin = import.meta.env.DEV && new URLSearchParams(location.search).has('devauth')
 
 export default function AdminPage() {
   const auth = useAuth()
   const [tab, setTab] = useState<(typeof TABS)[number]['k']>('inv')
-  if (!auth.isAdmin && !devAdmin) {
+  if (!auth.isAdmin) {
     return (
       <Page title="Admin"><p className="text-mute">Esta sección es solo para administradores. <Link to="/" className="underline decoration-signal decoration-2 underline-offset-4">Volver</Link></p></Page>
     )

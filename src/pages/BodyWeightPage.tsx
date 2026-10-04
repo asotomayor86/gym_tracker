@@ -7,7 +7,7 @@ import {
   WEIGHT_MAX_KG, WEIGHT_MIN_KG, addDays, isoDate, movingAverage, removeBodyWeight, setBodyWeight, useBodyWeights, weightTrend,
 } from '../components/weight/weightData'
 import { usePrefs } from '../lib/prefs'
-import { fromKg, roundTo, toKg } from '../lib/units'
+import { fromKg, toKg } from '../lib/units'
 
 const RANGES = [{ k: '30', label: '30 d', days: 30 }, { k: '90', label: '90 d', days: 90 }, { k: '365', label: '1 año', days: 365 }, { k: 'all', label: 'Todo', days: 0 }] as const
 
@@ -23,22 +23,22 @@ export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; dat
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const shown = text !== '' ? text : existing ? String(roundTo(fromKg(existing.weightKg, unit), 0.1)) : ''
+  const shown = text !== '' ? text : existing ? fromKg(existing.weightKg, unit).toFixed(1).replace(".", ",") : ''
   const placeholder = lastKg ? fmtNum(fromKg(lastKg, unit)) : unit === 'kg' ? '75,0' : '165'
 
-  const save = () => {
+  const save = async () => {
     const v = parseFloat(shown.replace(',', '.'))
     if (!Number.isFinite(v)) return setError('Escribe tu peso, por ejemplo 75,4.')
     const kg = Math.round(toKg(v, unit) * 10) / 10
     if (kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG) return setError(`El peso debe estar entre ${Math.round(fromKg(WEIGHT_MIN_KG, unit))} y ${Math.round(fromKg(WEIGHT_MAX_KG, unit))} ${unit}.`)
     setError('')
-    setBodyWeight(day, kg, (note || existing?.note || '').trim() || undefined)
+    try { await setBodyWeight(day, kg, (note || existing?.note || '').trim() || undefined) } catch { return setError('No se pudo guardar. Inténtalo de nuevo.') }
     setText(''); setNote(''); setSaved(true); setTimeout(() => setSaved(false), 2200)
     onSaved?.()
   }
 
   return (
-    <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); save() }}>
+    <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void save() }}>
       <div className="flex items-end gap-2">
         <label className="min-w-0 flex-1">
           <span className="eyebrow">{compact ? 'Peso de hoy' : 'Peso'} ({unit})</span>
@@ -166,7 +166,7 @@ export default function BodyWeightPage() {
                   </div>
                   <button type="button" onClick={() => { setEditing(r.date); window.scrollTo({ top: 0, behavior: 'smooth' }) }} aria-label={`Editar ${fmtDayLong(r.date)}`} className="press grid size-9 place-items-center rounded-lg border border-hair text-mute hover:text-ink">✎</button>
                   {confirmDel === r.date ? (
-                    <button type="button" onClick={() => { removeBodyWeight(r.date); setConfirmDel(null) }} onBlur={() => setConfirmDel(null)} autoFocus className="press min-h-9 rounded-lg border border-e-fail/60 px-2.5 text-xs font-semibold text-e-fail">¿Borrar?</button>
+                    <button type="button" onClick={() => { void removeBodyWeight(r.date); setConfirmDel(null) }} onBlur={() => setConfirmDel(null)} autoFocus className="press min-h-9 rounded-lg border border-e-fail/60 px-2.5 text-xs font-semibold text-e-fail">¿Borrar?</button>
                   ) : (
                     <button type="button" onClick={() => setConfirmDel(r.date)} aria-label={`Borrar ${fmtDayLong(r.date)}`} className="press grid size-9 place-items-center rounded-lg border border-hair text-mute hover:text-e-fail">✕</button>
                   )}
