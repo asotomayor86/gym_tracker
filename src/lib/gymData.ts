@@ -3,7 +3,7 @@
  * Fuente: fotos de las máquinas del gimnasio y confirmación del usuario (2026-10-04).
  *
  * AVAILABILITY solo contiene filas VERIFICADAS: true = hay máquina, false = confirmado que no existe.
- * Un ejercicio sin fila está "sin verificar" (hoy: Abductores en máquina y Elevación de gemelos en prensa).
+ * Un ejercicio sin fila está "sin verificar" (hoy: solo Elevación de gemelos en prensa).
  */
 
 export interface GymSeed {
@@ -24,8 +24,8 @@ export const AVAILABILITY: Record<string, Record<string, boolean>> = {
   'seed-ex-extension-de-cuadriceps': { [FORUS]: true }, // Leg Extension
   'seed-ex-curl-femoral-tumbado': { [FORUS]: false },
   'seed-ex-curl-femoral-sentado': { [FORUS]: true }, // Leg Curl (Selection y reclinado)
-  // 'seed-ex-abductores-en-maquina': sin verificar (solo Multi Hip, de pie)
-  'seed-ex-aductores-en-maquina': { [FORUS]: true }, // Adductor
+  'seed-ex-abductores-en-maquina': { [FORUS]: true }, // confirmado por el usuario (2026-10-04); además Multi Hip de pie
+  'seed-ex-aductores-en-maquina': { [FORUS]: true }, // Technogym Adductor (foto) y confirmado por el usuario
   'seed-ex-patada-de-gluteo-en-maquina': { [FORUS]: true }, // Glute
   'seed-ex-hip-thrust-en-maquina': { [FORUS]: true }, // Hip Thrust
   'seed-ex-elevacion-de-gemelos-sentado': { [FORUS]: false },
