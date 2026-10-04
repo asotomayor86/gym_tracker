@@ -1,14 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CreateRoutineButton } from '../components/CreateRoutine'
 import { GuideToggle } from '../components/ExerciseGuideView'
 import { ExercisePicker } from '../components/gym/ExercisePicker'
 import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
+import { RestTimer, type Rest } from '../components/RestTimer'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
+import { unlockAudio } from '../lib/restAudio'
 import { addSetToSession, reorderSessionExercises, sessionExerciseIds } from '../lib/order'
 import { fmtDate } from '../lib/labels'
 import { setPrefs, usePrefs } from '../lib/prefs'
@@ -33,7 +35,7 @@ export default function SessionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { unit, incrementKg } = usePrefs()
-  const [restUntil, setRestUntil] = useState<number | null>(null)
+  const [rest, setRest] = useState<Rest | null>(null)
   const [localOrder, setLocalOrder] = useState<string[] | null>(null)
   const { gym, avail } = useGymContext()
 
@@ -69,10 +71,11 @@ export default function SessionPage() {
   const patchLog = (l: SetLog, patch: Partial<SetLog>) => save('setLogs', { ...l, ...patch })
 
   const setEffort = async (l: SetLog, effort: Effort) => {
+    unlockAudio()
     if (l.effort === effort) return patchLog(l, { effort: null, completedAt: null })
     await patchLog(l, { effort, completedAt: Date.now() })
-    const rest = items.find((i) => i.exerciseId === l.exerciseId)?.restS ?? 90
-    if (rest > 0) setRestUntil(Date.now() + rest * 1000)
+    const restS = items.find((i) => i.exerciseId === l.exerciseId)?.restS ?? 90
+    if (restS > 0) setRest({ id: Date.now(), until: Date.now() + restS * 1000, total: restS, label: `${exName(l.exerciseId)} · serie ${l.setIndex + 1}` })
   }
 
   const addSet = (eid: string) => addSetToSession(session.id, eid, unit)
@@ -104,6 +107,14 @@ export default function SessionPage() {
         </div>
       }
     >
+      {rest && (
+        <RestTimer
+          key={rest.id}
+          rest={rest}
+          onClose={() => setRest(null)}
+          onAdjust={(d) => setRest((r) => (r ? { ...r, until: Math.max(Date.now(), r.until + d * 1000), total: Math.max(5, r.total + d) } : r))}
+        />
+      )}
       <SortableList ids={groups} onReorder={reorder}>
       {groups.map((eid, gi) => {
         const sets = logs.filter((l) => l.exerciseId === eid).sort((a, b) => a.setIndex - b.setIndex)
@@ -189,38 +200,6 @@ export default function SessionPage() {
         <Button variant="danger" onClick={discard}>Descartar</Button>
       </div>
 
-      {restUntil && <RestTimer until={restUntil} onClose={() => setRestUntil(null)} />}
     </Page>
-  )
-}
-
-function RestTimer({ until, onClose }: { until: number; onClose: () => void }) {
-  const [now, setNow] = useState(Date.now())
-  const left = Math.max(0, Math.ceil((until - now) / 1000))
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 250)
-    return () => clearInterval(t)
-  }, [until])
-
-  useEffect(() => {
-    if (left === 0) navigator.vibrate?.([200, 100, 200])
-  }, [left])
-
-  const ready = left === 0
-  return (
-    <div className="glass-flat fixed bottom-24 md:bottom-6 inset-x-4 md:inset-x-auto md:right-6 md:w-80 z-30 flex items-center gap-4 px-4 py-3 shadow-[0_8px_30px_rgb(0_0_0/0.35)]">
-      <div className="relative size-12 shrink-0" aria-hidden>
-        {!ready && <><div className="pulse-ring" /><div className="pulse-ring" style={{ animationDelay: '-1.4s' }} /></>}
-        <div className="absolute inset-3.5 rounded-full bg-[radial-gradient(circle,#fff3d0,#ffb000)]" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="eyebrow">{ready ? '¡Siguiente serie!' : 'Descanso'}</div>
-        <div className="num text-3xl leading-tight">
-          {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-        </div>
-      </div>
-      <button onClick={onClose} className="press rounded-full border border-hair px-3 min-h-10 text-sm text-mute hover:text-ink" aria-label="Cerrar">✕</button>
-    </div>
   )
 }

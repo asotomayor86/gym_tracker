@@ -144,6 +144,12 @@ body {
 .pulse-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--signal); animation: pulse-ring 2.8s ease-out infinite; }
 @keyframes pulse-ring { 0% { transform: scale(0.55); opacity: 0.8; } 100% { transform: scale(1.7); opacity: 0; } }
 
+/* Descanso: cifras con pulso sobrio al llegar a 0 y aviso en los últimos 10 s */
+.rest-pulse { animation: rest-pulse 1s ease-in-out infinite; }
+@keyframes rest-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: 0.8; } }
+.rest-soon .rest-digits { animation: rest-soon 1s ease-in-out infinite; }
+@keyframes rest-soon { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
 /* Plegado: filas de rejilla + desenfoque */
 .fold { display: grid; transition: grid-template-rows 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .fold > div { overflow: hidden; min-height: 0; transition: opacity 0.45s, filter 0.45s, transform 0.45s; }
@@ -178,9 +184,15 @@ select option { color: #0b0f14; background: #fff; }
 .rise > *:nth-child(5) { animation-delay: 0.2s; }
 
 @media (prefers-reduced-motion: reduce), (prefers-reduced-data: reduce) {
-  .live-bg i, .heat, .heat-fill, .pulse-ring, .rise > *, .sheet-in, .sheet-fade { animation: none !important; }
+  .live-bg i, .heat, .heat-fill, .pulse-ring, .rest-pulse, .rest-soon .rest-digits, .rise > *, .sheet-in, .sheet-fade { animation: none !important; }
   .fold, .fold > div, .press { transition: none !important; }
 }
 
 /* Arrastre de ejercicios: la fila levantada se eleva y se inclina un poco */
 .drag-lift > * { box-shadow: 0 14px 34px rgb(0 0 0 / 0.4); outline: 2px solid var(--signal); outline-offset: -2px; border-radius: 20px; }
+
+/* Descanso en horizontal bajo: el panel es bajo, las cifras se dimensionan por su altura */
+@media (orientation: landscape) and (max-height: 500px) {
+  .rest-digits { font-size: 13dvh !important; }
+  .rest-digits.rest-pulse { font-size: 10.5dvh !important; }
+}
