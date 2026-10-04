@@ -6,6 +6,7 @@ import { NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
 import AdminPage from './pages/AdminPage'
 import BodyWeightPage from './pages/BodyWeightPage'
+import ImportPage from './pages/ImportPage'
 import HomePage from './pages/HomePage'
 import InvitePage from './pages/InvitePage'
 import LoginPage from './pages/LoginPage'
@@ -95,6 +96,7 @@ function MainApp() {
           <Route path="/templates/:id" element={<TemplateEditPage />} />
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/importar" element={<ImportPage />} />
           <Route path="/peso" element={<BodyWeightPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />

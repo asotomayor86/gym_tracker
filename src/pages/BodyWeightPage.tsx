@@ -73,7 +73,7 @@ export default function BodyWeightPage() {
   const hist = [...rows].reverse().slice(0, 30)
 
   return (
-    <Page title="Peso" eyebrow="Peso corporal" actions={<Link to="/stats" className="press inline-block rounded-full border border-hair px-4 py-2 text-sm font-semibold text-mute hover:text-ink">Stats</Link>}>
+    <Page title="Peso" eyebrow="Peso corporal" actions={<span className="flex flex-wrap gap-2"><Link to="/importar" className="press inline-block rounded-full border border-hair px-4 py-2 text-sm font-semibold text-mute hover:text-ink">Importar de la báscula</Link><Link to="/stats" className="press inline-block rounded-full border border-hair px-4 py-2 text-sm font-semibold text-mute hover:text-ink">Stats</Link></span>}>
       <section>
         <SectionTitle n="01">Registro</SectionTitle>
         <div className="glass p-4"><WeightEntry key={editing ?? 'new'} date={editing ?? undefined} onSaved={() => setEditing(null)} /></div>
