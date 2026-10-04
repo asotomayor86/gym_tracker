@@ -782,6 +782,7 @@ const BASE: ExerciseGuide[] = [
     tips: [
       'Piensa en llevar los codos al suelo.',
       'Pecho alto y hombros lejos de las orejas.',
+      'Si el agarre es intercambiable, prueba la barra ancha o las asas neutras.',
     ],
     mistakes: [
       'Tirar con los brazos en lugar de la espalda.',
@@ -832,6 +833,7 @@ const BASE: ExerciseGuide[] = [
     tips: [
       'El tronco casi no se mueve.',
       'Aprieta la espalda, no los brazos.',
+      'Si el agarre es intercambiable, prueba la barra, el triángulo o las asas.',
     ],
     mistakes: [
       'Balancear el tronco hacia atrás.',

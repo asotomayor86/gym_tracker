@@ -51,9 +51,9 @@ export const AVAILABILITY: Record<string, Record<string, boolean>> = {
   'seed-ex-extension-de-triceps-en-maquina': { [FORUS]: false },
   'seed-ex-press-de-triceps-en-maquina-fondos': { [FORUS]: true }, // Impulse Seated Dip
   // Espalda
-  'seed-ex-jalon-al-pecho': { [FORUS]: true }, // Vertical Traction y Pulldown
+  'seed-ex-jalon-al-pecho': { [FORUS]: true }, // jalón de cable selectorizado (Pro Series) + Vertical Traction y Pulldown (palancas)
   'seed-ex-remo-sentado-en-maquina': { [FORUS]: true }, // Low Row
-  'seed-ex-remo-en-polea-baja': { [FORUS]: true }, // Pulley
+  'seed-ex-remo-en-polea-baja': { [FORUS]: true }, // remo en polea baja selectorizado (Pro Series) + Technogym Pulley
   'seed-ex-dominadas-asistidas-en-maquina': { [FORUS]: false },
   // Core
   'seed-ex-crunch-en-maquina': { [FORUS]: false },
