@@ -2,6 +2,7 @@ import AccountSection from '../components/auth/AccountSection'
 import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
 import { KindIcon, StatusFacts } from '../components/SyncUI'
 import { kindDesc, kindLabel, kindTone } from '../components/syncMeta'
+import VersionInfo from '../components/VersionInfo'
 import { db } from '../db/db'
 import { useGyms } from '../lib/gyms'
 import { setPrefs, usePrefs } from '../lib/prefs'
@@ -92,6 +93,7 @@ export default function SettingsPage() {
           <Button variant="ghost" onClick={exportJson}>Exportar JSON</Button>
         </div>
       </details>
+      <VersionInfo />
     </Page>
   )
 }

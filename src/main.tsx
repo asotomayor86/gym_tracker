@@ -6,9 +6,11 @@ import App from './App.tsx'
 import UpdateBanner from './components/UpdateBanner'
 import { ensureSeed } from './lib/ensureSeed'
 import { awaitsFirstSync, hasToken, startAutoSync } from './lib/sync'
+import { startUpdates } from './lib/swUpdate'
 
 if (!awaitsFirstSync()) void ensureSeed({ merge: !hasToken() })
 startAutoSync()
+startUpdates()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,15 +1,21 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vitest/config'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Versión en ejecución: commit de Vercel o de git y fecha de compilación
+const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? (() => { try { return execSync('git rev-parse HEAD').toString().trim() } catch { return 'dev' } })()).slice(0, 7)
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: { __APP_COMMIT__: JSON.stringify(commit), __APP_BUILT_AT__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt', // la versión nueva espera hasta que el usuario pulse «Recargar» (UpdateBanner)
+      registerType: 'autoUpdate', // el SW nuevo se activa solo; src/lib/swUpdate.ts decide cuándo recargar la página
+      injectRegister: null, // el registro lo hace src/lib/swUpdate.ts
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Gym Tracker',
