@@ -34,3 +34,6 @@ dist-ssr
 
 # Imágenes de referencia/inspiración (no se suben)
 /inspire/
+
+# Documentos y fotos personales (no se suben)
+/documents/
