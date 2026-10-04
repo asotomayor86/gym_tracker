@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ExercisePicker } from '../components/gym/ExercisePicker'
 import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
+import { LastAttemptButton } from '../components/LastAttempt'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
@@ -97,6 +98,7 @@ export default function TemplateEditPage() {
                 <div className="display text-base leading-snug">{name}</div>
                 {gym && ex && avail(ex.id) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(ex.id)} gymName={gym.name} /></div>}
               </div>
+              {ex && <LastAttemptButton iconOnly exerciseId={ex.id} exerciseName={name} onApply={async (v) => { await update({ targetWeightKg: v.weightKg, targetReps: v.reps }); return 1 }} />}
               <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
               <Button variant="danger" className="!min-h-9 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
             </div>

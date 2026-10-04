@@ -1,9 +1,11 @@
 import { useEffect, useId, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { filterExercises } from '../../lib/exerciseFilter'
 import { availabilityIndex, useExerciseGyms } from '../../lib/gyms'
 import { MUSCLE_LABELS } from '../../lib/labels'
 import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../../lib/types'
 import { Button, inputCls } from '../ui'
+import { LastAttemptButton } from '../LastAttempt'
 import { AvailabilityChip } from './GymUI'
 import { useGymContext } from './useGymContext'
 
@@ -21,17 +23,17 @@ const loadRemembered = (): Remembered => {
  * (solo en mi gimnasio, grupos musculares, búsqueda y contador) y la lista debajo. Pulsar uno lo añade al FINAL y la hoja
  * sigue abierta para añadir más; el filtro se recuerda entre usos.
  */
-export function ExercisePicker({ exercises, onPick, label }: { exercises: Exercise[]; onPick: (id: string) => void; label: string }) {
+export function ExercisePicker({ exercises, onPick, label, excludeSessionId }: { exercises: Exercise[]; onPick: (id: string) => void; label: string; excludeSessionId?: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
       <Button variant="ghost" className="w-full" onClick={() => setOpen(true)}>{label}</Button>
-      {open && <PickerSheet exercises={exercises} onPick={onPick} onClose={() => setOpen(false)} />}
+      {open && <PickerSheet exercises={exercises} onPick={onPick} excludeSessionId={excludeSessionId} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function PickerSheet({ exercises, onPick, onClose }: { exercises: Exercise[]; onPick: (id: string) => void; onClose: () => void }) {
+function PickerSheet({ exercises, onPick, excludeSessionId, onClose }: { exercises: Exercise[]; onPick: (id: string) => void; excludeSessionId?: string; onClose: () => void }) {
   const { gym, gymId } = useGymContext()
   const rows = useExerciseGyms()
   const [rem, setRem] = useState(loadRemembered)
@@ -60,8 +62,8 @@ function PickerSheet({ exercises, onPick, onClose }: { exercises: Exercise[]; on
   const statusOf = useMemo(() => availabilityIndex(gymId, rows), [gymId, rows])
   const toggleMuscle = (m: MuscleGroup) => update({ muscles: rem.muscles.includes(m) ? rem.muscles.filter((x) => x !== m) : [...rem.muscles, m] })
 
-  return (
-    <div role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} className="fixed inset-0 z-50 flex flex-col bg-paper">
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} className="fixed inset-0 z-[55] flex flex-col bg-paper">
       <div className="shrink-0 space-y-3 border-b border-hair px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
           <h2 id={`${id}-t`} className="display flex-1 text-lg">Añadir ejercicio</h2>
@@ -97,8 +99,8 @@ function PickerSheet({ exercises, onPick, onClose }: { exercises: Exercise[]; on
             const n = added.filter((x) => x === e.id).length
             const status = gym ? statusOf(e.id) : 'available'
             return (
-              <li key={e.id}>
-                <button type="button" onClick={() => { onPick(e.id); setAdded((a) => [...a, e.id]) }} className="press flex min-h-14 w-full items-center gap-3 py-2 text-left">
+              <li key={e.id} className="flex items-center gap-2">
+                <button type="button" onClick={() => { onPick(e.id); setAdded((a) => [...a, e.id]) }} className="press flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left">
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold leading-snug">{e.name}</span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-mute">
@@ -109,12 +111,14 @@ function PickerSheet({ exercises, onPick, onClose }: { exercises: Exercise[]; on
                   {n > 0 && <span className="num shrink-0 text-xs text-signal-text">✓ añadido{n > 1 ? ` ×${n}` : ''}</span>}
                   <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full border border-hair text-lg text-signal-text">+</span>
                 </button>
+                <LastAttemptButton iconOnly exerciseId={e.id} exerciseName={e.name} excludeSessionId={excludeSessionId} />
               </li>
             )
           })}
         </ul>
         {list.length === 0 && <p className="mx-auto max-w-3xl py-10 text-center text-sm text-mute">Ningún ejercicio coincide con estos filtros.</p>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

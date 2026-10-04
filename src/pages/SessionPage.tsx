@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { LastAttemptButton } from '../components/LastAttempt'
 import { CreateRoutineButton } from '../components/CreateRoutine'
 import { GuideToggle } from '../components/ExerciseGuideView'
 import { ExercisePicker } from '../components/gym/ExercisePicker'
@@ -78,6 +79,13 @@ export default function SessionPage() {
     if (restS > 0) setRest({ id: Date.now(), until: Date.now() + restS * 1000, total: restS, label: `${exName(l.exerciseId)} · serie ${l.setIndex + 1}` })
   }
 
+  /** Rellena peso y repeticiones sugeridos en las series aún sin completar de un ejercicio. */
+  const applySuggestion = async (eid: string, v: { weightKg: number; reps: number }) => {
+    const pending = logs.filter((l) => l.exerciseId === eid && !isDone(l))
+    for (const l of pending) await patchLog(l, { weightKg: v.weightKg, reps: v.reps, inputUnit: unit, inputWeight: roundTo(fromKg(v.weightKg, unit), 0.5) })
+    return pending.length
+  }
+
   const addSet = (eid: string) => addSetToSession(session.id, eid, unit)
 
   const finish = async () => {
@@ -131,6 +139,7 @@ export default function SessionPage() {
                 {gym && avail(eid) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(eid)} gymName={gym.name} /></div>}
               </div>
               {!finished && groups.length > 1 && <MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} />}
+              {!finished && <LastAttemptButton exerciseId={eid} exerciseName={exName(eid)} excludeSessionId={session.id} onApply={(v) => applySuggestion(eid, v)} />}
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
             {sug && (
@@ -191,7 +200,7 @@ export default function SessionPage() {
       })}
       </SortableList>
 
-      <ExercisePicker exercises={exercises} label="+ Añadir ejercicio" onPick={(id) => void addSet(id)} />
+      <ExercisePicker exercises={exercises} label="+ Añadir ejercicio" excludeSessionId={session.id} onPick={(id) => void addSet(id)} />
 
       <div className="flex gap-2">
         {!finished && <Button className="flex-1" onClick={finish}>Terminar sesión</Button>}

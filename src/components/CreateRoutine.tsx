@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Button, inputCls } from './ui'
 import { createTemplateFromSession, defaultTemplateName } from '../lib/templateFromSession'
@@ -43,8 +44,8 @@ function CreateRoutineSheet({ sessionId, startedAt, onClose }: { sessionId: stri
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => !busy && onClose()}>
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => !busy && onClose()}>
       <form
         role="dialog" aria-modal="true" aria-labelledby={`${id}-t`}
         className="glass w-full max-w-md space-y-4 rounded-b-none p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[20px]"
@@ -65,6 +66,7 @@ function CreateRoutineSheet({ sessionId, startedAt, onClose }: { sessionId: stri
           <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>Cancelar</Button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   )
 }
