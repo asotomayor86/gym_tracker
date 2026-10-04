@@ -209,6 +209,8 @@ export const exercises = pgTable(
   {
     ...catalog(),
     name: text('name').notNull(),
+    /** Nombre en inglés (opcional). */
+    nameEn: text('name_en').notNull().default(''),
     primaryMuscle: text('primary_muscle').notNull(),
     secondaryMuscles: jsonb('secondary_muscles').$type<string[]>().notNull().default([]),
     equipment: text('equipment').notNull().default(''),

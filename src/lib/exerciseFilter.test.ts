@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterExercises } from './exerciseFilter'
+import { exerciseSearchText, filterExercises, matchesQuery } from './exerciseFilter'
 import { exerciseGymId } from './gyms'
 import type { Exercise, ExerciseGym, MuscleGroup } from './types'
 
@@ -54,6 +54,21 @@ describe('filterExercises', () => {
     expect(names(r)).toEqual(['Press de pecho', 'Curl de bíceps', 'Extensión de tríceps']) // orden de MUSCLE_GROUPS
     expect(names(filterExercises(ALL, { sort: 'none' }))).toEqual(['Press de pecho', 'Curl de bíceps', 'Extensión de tríceps', 'Élevación lateral'])
     expect(names(filterExercises(ALL, { muscles: ['pecho'], query: 'press', onlyAvailableAt: 'g' }, [av('1', true)]))).toEqual(['Press de pecho'])
+  })
+
+  it('busca también por el nombre en inglés (sin tildes, por palabras) y no depende de que exista', () => {
+    const list = [
+      ex('1', 'Prensa de piernas', 'cuadriceps', [], { nameEn: 'Leg Press' }),
+      ex('2', 'Jalón al pecho', 'espalda', [], { nameEn: 'Lat Pulldown' }),
+      ex('3', 'Curl de bíceps', 'biceps'), // fila antigua sin nameEn
+    ]
+    expect(names(filterExercises(list, { query: 'leg press' }))).toEqual(['Prensa de piernas'])
+    expect(names(filterExercises(list, { query: 'PULLDOWN' }))).toEqual(['Jalón al pecho'])
+    expect(names(filterExercises(list, { query: 'lat pecho' }))).toEqual(['Jalón al pecho']) // palabras de ambos idiomas
+    expect(names(filterExercises(list, { query: 'jalon' }))).toEqual(['Jalón al pecho'])
+    expect(names(filterExercises(list, { query: 'curl' }))).toEqual(['Curl de bíceps'])
+    expect(matchesQuery(list[0], 'press')).toBe(true)
+    expect(exerciseSearchText(list[2])).toContain('curl de biceps')
   })
 
   it('no modifica la lista de entrada', () => {

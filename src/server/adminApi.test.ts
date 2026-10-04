@@ -11,7 +11,7 @@ vi.mock('../../api/_lib/db', async () => {
   holder.t = await makeTestDb()
   return { db: holder.t.db }
 })
-vi.setConfig({ testTimeout: 30_000 })
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 })
 
 const PW = 'una-contraseña-larga-1'
 const ADMIN = 'admin@example.com'

@@ -110,6 +110,17 @@ describe('planSeed · migraciones y refresco', () => {
     expect(plan.insert.exercises).toEqual([seed.exercises[0]])
   })
 
+  it('nameEn llega a las semillas sin editar y se conserva en las editadas por el admin', () => {
+    const seed: SeedRows = { ...SEED, exercises: [ex('seed-ex-prensa', 'Prensa de piernas', { nameEn: 'Leg Press' }), ex('seed-ex-curl', 'Curl de bíceps', { nameEn: 'Biceps Curl' })] }
+    const old: SeedRows = {
+      ...EMPTY,
+      exercises: [ex('seed-ex-prensa', 'Prensa de piernas'), ex('seed-ex-curl', 'Curl de bíceps', { updatedAt: 9, nameEn: 'Mi curl' })],
+    }
+    const plan = planSeed(seed, old)
+    expect(plan.insert.exercises.map((e) => [e.id, e.nameEn])).toEqual([['seed-ex-prensa', 'Leg Press']]) // la sin editar se refresca
+    expect(plan.migrate).toEqual([]) // la editada no se toca
+  })
+
   it('no refresca semillas ya editadas por el usuario', () => {
     const old: SeedRows = { ...EMPTY, exercises: [ex('seed-ex-prensa', 'Prensa de piernas', { updatedAt: 7, notes: 'mía' })] }
     expect(planSeed(SEED, old).insert.exercises.map((e) => e.id)).toEqual(['seed-ex-curl'])

@@ -8,11 +8,11 @@ import { readFileSync } from 'node:fs'
 import type { PGlite } from '@electric-sql/pglite'
 import { describe, expect, it, vi } from 'vitest'
 import { ensureAdmin } from '../../api/_lib/bootstrap'
-import { type Conn, type Q, type Row, pgArray, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
+import { type Conn, type Q, type Row, pgArray, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runCatalogRefresh, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
 import { buildSeedRows } from '../lib/seed'
 import { makeTestDb } from './testServer'
 
-vi.setConfig({ testTimeout: 60_000 }) // cada caso monta PGlite y carga cientos de filas
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 }) // cada caso monta PGlite y carga cientos de filas
 
 const ADMIN = 'admin@example.com'
 const PW = 'una-contraseña-larga-1'
@@ -217,6 +217,7 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
     const { p, conn } = await setup(fixture())
     await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false })
     await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false })
+    await runCatalogRefresh(conn, { dryRun: false })
     const fresh = (await makeTestDb()).pglite
     const shape = async (db: PGlite) => {
       const cols = await q<{ t: string; c: string; ty: string; nn: string; d: string | null }>(
@@ -300,5 +301,8 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
     const cat = await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: true, now: 3 })
     console.log('INFORME CATALOGO', JSON.stringify(cat))
     expect(cat.danglingSetLogs + cat.danglingTemplateExercises).toBe(0)
+    await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 3 })
+    const refresh = await runCatalogRefresh(conn, { dryRun: true, now: 4 })
+    console.log('INFORME REFRESH', JSON.stringify(refresh))
   })
 })

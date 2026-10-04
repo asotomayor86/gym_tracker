@@ -33,3 +33,18 @@ Requisitos: F0–F2 ya aplicadas. **Orden**:
 
 **Rollback**: `down-catalog --apply` recupera la tabla por usuario (los cambios hechos al catálogo después se pierden) + promover el despliegue anterior; o restaurar la rama de Neon.
 **Cliente**: Dexie v3 (tablas `gyms`, `exerciseGyms`; solo añade). Los clientes antiguos siguen funcionando para sus datos (ignoran el catálogo nuevo) hasta actualizarse.
+
+---
+
+# Etapa `catalog-refresh`: nombres en inglés y novedades del catálogo semilla
+
+Aditiva e idempotente; **en seco por defecto**. Requiere la etapa `catalog` ya aplicada.
+
+1. Copia (rama de Neon + volcado JSON).
+2. En seco: `npx tsx scripts/migrate-multiuser.ts catalog-refresh` → informe: `addedColumn` (true la primera vez), `nameEnFilled` (ejercicios a los que se pone nameEn), `nameEnRespected` (ya tenían nameEn: se respetan), `notInSeed` (creados por el admin, no se tocan), `insertedExercises` (ids nuevos del semilla), `insertedGyms`, `insertedAvailability`, `catalogExercisesLive`.
+3. `npx tsx scripts/migrate-multiuser.ts catalog-refresh --apply`.
+4. Desplegar el cliente/API con `nameEn` (la API ignora la columna si el cliente no la envía; los clientes antiguos no la pisan).
+5. Smoke: pull del catálogo con `nameEn`; un usuario normal recibe los nombres; búsqueda en inglés en la app.
+
+Reglas: `name_en` solo se rellena donde está vacío (no pisa lo editado por el admin); `name` y el resto de campos no se tocan; los ejercicios del semilla que no existan (por id ni por nombre normalizado entre los vivos) se insertan; los gimnasios y marcas de disponibilidad que falten se insertan con ON CONFLICT DO NOTHING (las marcas existentes, editadas o no, no se tocan). Las filas modificadas/nuevas llevan updated_at/synced_at = ahora.
+**Rollback**: `down-catalog-refresh --apply` elimina la columna `name_en` (los ejercicios y marcas insertados se quedan: son datos válidos); o restaurar la rama de Neon.

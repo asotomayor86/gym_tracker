@@ -92,6 +92,22 @@ describe('catálogo global: ejercicios, gimnasios y disponibilidad', () => {
     expect((await push(adminToken, { exercises: [ex('b', 'Nuevo')] })).body.catalog.applied).toBe(1)
   })
 
+  it('nameEn: lo guarda el admin (recortado), se valida y un cliente antiguo que no lo envía no lo pisa', async () => {
+    await push(adminToken, { exercises: [ex('a', 'Prensa de piernas', { nameEn: '  Leg Press  ' })] })
+    expect((await pull(userToken)).catalog.exercises[0]).toMatchObject({ name: 'Prensa de piernas', nameEn: 'Leg Press' })
+    // Cliente antiguo (sin el campo) edita el nombre más tarde: el nombre cambia y el nameEn se conserva.
+    const old = ex('a', 'Prensa 45', { updatedAt: 200 }) as Record<string, unknown>
+    delete old.nameEn
+    expect((await push(adminToken, { exercises: [old] })).body.catalog.applied).toBe(1)
+    expect((await pull(userToken)).catalog.exercises[0]).toMatchObject({ name: 'Prensa 45', nameEn: 'Leg Press' })
+    // Valores no válidos se rechazan.
+    const bad = await push(adminToken, { exercises: [ex('b', 'Otro', { nameEn: 'x'.repeat(121) }), ex('c', 'Otro 2', { nameEn: 5 })] })
+    expect(bad.body.catalog).toMatchObject({ applied: 0, rejected: { exercises: 2 } })
+    // Vaciarlo explícitamente (admin) sí está permitido.
+    await push(adminToken, { exercises: [ex('a', 'Prensa 45', { updatedAt: 300, nameEn: '' })] })
+    expect((await pull(userToken)).catalog.exercises[0].nameEn).toBe('')
+  })
+
   it('los datos por usuario siguen aislados aunque el catálogo sea global', async () => {
     await push(userToken, {}, { workoutTemplates: [{ id: 't1', name: 'del usuario', updatedAt: 5, deletedAt: null }] })
     expect((await pull(adminToken)).changes.workoutTemplates).toEqual([])

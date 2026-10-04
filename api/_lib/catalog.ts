@@ -35,7 +35,12 @@ export async function pushCatalog(db: Db, ctx: AuthContext, incoming: Rows, now:
     for (const r of incoming[name] ?? []) {
       let ok = baseOk(r)
       if (ok && name === 'exercises') {
-        ok = str(r.name, 120) && !!(r.name as string).trim() && typeof r.primaryMuscle === 'string' && MUSCLES.has(r.primaryMuscle) &&
+        // nameEn es opcional: los clientes antiguos no lo envían y entonces NO se toca (solo se escriben las columnas presentes).
+        if (ok && r.nameEn !== undefined) {
+          ok = str(r.nameEn, 120)
+          if (ok) r.nameEn = (r.nameEn as string).trim()
+        }
+        ok = ok && str(r.name, 120) && !!(r.name as string).trim() && typeof r.primaryMuscle === 'string' && MUSCLES.has(r.primaryMuscle) &&
           (r.secondaryMuscles === undefined || (Array.isArray(r.secondaryMuscles) && r.secondaryMuscles.every((m) => typeof m === 'string' && MUSCLES.has(m))))
         if (ok && !r.deletedAt) {
           const owner = liveNames.get(norm(r.name as string))

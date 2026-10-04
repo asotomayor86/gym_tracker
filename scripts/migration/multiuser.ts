@@ -414,3 +414,121 @@ export async function runCatalogDown(conn: Conn): Promise<void> {
     await q(`ALTER INDEX exercises_user_legacy_pull_idx RENAME TO exercises_pull_idx`)
   })
 }
+
+// ───────────── Etapa 4: refresco del catálogo (nombres en inglés y ejercicios nuevos del semilla) ─────────────
+
+export interface SeedExerciseInput { id: string; name: string; nameEn?: string; primaryMuscle: string; secondaryMuscles: string[]; equipment: string }
+export interface AvailabilityInput { exerciseId: string; gymId: string; available: boolean }
+export interface GymInput { id: string; name: string; sort: number }
+
+export interface RefreshOptions {
+  dryRun: boolean
+  now?: number
+  /** Por defecto, el catálogo semilla actual (src/lib/seed.ts + gymData.ts); se inyecta en los tests. */
+  seedExercises?: SeedExerciseInput[]
+  availability?: AvailabilityInput[]
+  gyms?: GymInput[]
+}
+
+export interface RefreshReport {
+  stage: 'catalog-refresh'
+  addedColumn: boolean
+  /** Ejercicios del catálogo a los que se les pone nameEn (estaba vacío y el semilla lo trae). */
+  nameEnFilled: number
+  /** Ya tenían nameEn (p. ej. editado por el admin): se respetan. */
+  nameEnRespected: number
+  /** Ejercicios vivos del catálogo que no están en el semilla (creados por el admin): no se tocan. */
+  notInSeed: number
+  insertedExercises: string[]
+  insertedGyms: number
+  insertedAvailability: number
+  catalogExercisesLive: number
+}
+
+/**
+ * Etapa 4 (aditiva, idempotente; `dryRun` hace ROLLBACK). Requiere la etapa `catalog` aplicada.
+ *  1. Añade la columna `exercises.name_en` (NOT NULL DEFAULT '') si no existe.
+ *  2. Rellena `name_en` desde el semilla SOLO donde está vacío (no pisa lo que haya editado el admin) por id seed-*;
+ *     no toca `name` ni ningún otro campo.
+ *  3. Inserta los ejercicios nuevos del semilla que no existan (por id ni por nombre normalizado entre los vivos).
+ *  4. Inserta los gimnasios y las filas de disponibilidad que falten (ON CONFLICT DO NOTHING: las marcas existentes,
+ *     editadas o no, no se tocan).
+ * Las filas modificadas o nuevas llevan updated_at/synced_at = ahora para que los dispositivos las bajen.
+ */
+export async function runCatalogRefresh(conn: Conn, opts: RefreshOptions): Promise<RefreshReport> {
+  const now = opts.now ?? Date.now()
+  const seed = opts.seedExercises ?? buildSeedRows().exercises
+  const availability = opts.availability ?? AVAILABILITY_ROWS_FOR_MIGRATION
+  const gyms = opts.gyms ?? GYM_SEEDS_FOR_MIGRATION
+  class DryRun extends Error {}
+  let report!: RefreshReport
+  try {
+    await conn.transaction(async (q) => {
+      const hasUserId = (await q(`SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'exercises' AND column_name = 'user_id'`)).length > 0
+      const exists = (await q(`SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'exercises'`)).length > 0
+      if (!exists || hasUserId) throw new Error('Aplica antes la etapa `catalog` (el catálogo global todavía no existe).')
+      const hasCol = (await q(`SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'exercises' AND column_name = 'name_en'`)).length > 0
+      if (!hasCol) await q(`ALTER TABLE exercises ADD COLUMN name_en text NOT NULL DEFAULT ''`)
+
+      const rows = await q(`SELECT id, name, name_en, deleted_at FROM exercises`)
+      const byId = new Map(rows.map((r) => [r.id as string, r]))
+      const liveNames = new Set(rows.filter((r) => r.deleted_at === null || r.deleted_at === undefined).map((r) => norm(r.name as string)))
+      const seedIds = new Set(seed.map((e) => e.id))
+      const report0: RefreshReport = {
+        stage: 'catalog-refresh', addedColumn: !hasCol, nameEnFilled: 0, nameEnRespected: 0, notInSeed: 0, insertedExercises: [],
+        insertedGyms: 0, insertedAvailability: 0, catalogExercisesLive: 0,
+      }
+
+      for (const e of seed) {
+        const cur = byId.get(e.id)
+        if (!cur) continue
+        const en = (e.nameEn ?? '').trim()
+        if (cur.name_en && String(cur.name_en).trim() !== '') report0.nameEnRespected++
+        else if (en) {
+          await q(`UPDATE exercises SET name_en = $1, updated_at = $2, synced_at = $2 WHERE id = $3`, [en, now, e.id])
+          report0.nameEnFilled++
+        }
+      }
+      report0.notInSeed = rows.filter((r) => (r.deleted_at === null || r.deleted_at === undefined) && !seedIds.has(r.id as string)).length
+
+      for (const e of seed) {
+        if (byId.has(e.id) || liveNames.has(norm(e.name))) continue
+        await q(
+          `INSERT INTO exercises (id, updated_at, deleted_at, synced_at, name, name_en, primary_muscle, secondary_muscles, equipment, notes) VALUES ($1, $2, NULL, $2, $3, $4, $5, $6, $7, '')`,
+          [e.id, now, e.name, (e.nameEn ?? '').trim(), e.primaryMuscle, JSON.stringify(e.secondaryMuscles), e.equipment],
+        )
+        liveNames.add(norm(e.name))
+        report0.insertedExercises.push(e.id)
+      }
+
+      for (const g of gyms) {
+        const r = await q(
+          `INSERT INTO gyms (id, updated_at, deleted_at, synced_at, name, notes, sort) VALUES ($1, $2, NULL, $2, $3, '', $4) ON CONFLICT (id) DO NOTHING RETURNING id`,
+          [g.id, now, g.name, g.sort],
+        )
+        report0.insertedGyms += r.length
+      }
+      for (const a of availability) {
+        if (!(await q(`SELECT 1 FROM exercises WHERE id = $1`, [a.exerciseId])).length) continue // solo ejercicios que existen en el catálogo
+        const r = await q(
+          `INSERT INTO exercise_gyms (id, updated_at, deleted_at, synced_at, exercise_id, gym_id, available) VALUES ($1, $2, NULL, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING RETURNING id`,
+          [`${a.exerciseId}:${a.gymId}`, now, a.exerciseId, a.gymId, a.available],
+        )
+        report0.insertedAvailability += r.length
+      }
+      report0.catalogExercisesLive = Number(((await q(`SELECT count(*) c FROM exercises WHERE deleted_at IS NULL`))[0] as { c: unknown }).c)
+      report = report0
+      if (opts.dryRun) throw new DryRun()
+    })
+  } catch (e) {
+    if (!(e instanceof DryRun)) throw e
+  }
+  return report
+}
+
+/** Revierte la etapa 4: elimina la columna name_en (los ejercicios y marcas insertados se quedan: son datos válidos). */
+export async function runCatalogRefreshDown(conn: Conn): Promise<void> {
+  await conn.transaction(async (q) => {
+    await q(`ALTER TABLE exercises DROP COLUMN IF EXISTS name_en`)
+  })
+}

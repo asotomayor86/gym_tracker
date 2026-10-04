@@ -24,6 +24,8 @@ export interface SyncFields {
 
 export interface Exercise extends SyncFields {
   name: string
+  /** Nombre en inglés (catálogo global). '' o ausente en filas anteriores: usa `exercise.nameEn ?? ''`. */
+  nameEn?: string
   primaryMuscle: MuscleGroup
   secondaryMuscles: MuscleGroup[]
   equipment: string
