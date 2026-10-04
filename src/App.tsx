@@ -1,7 +1,12 @@
+import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { ForcedPasswordChange } from './components/auth/AccountSection'
+import { mockAuthActive, useAuth } from './components/auth/authShim'
 import { LoginSheetHost, NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
 import HomePage from './pages/HomePage'
+import InvitePage from './pages/InvitePage'
+import LoginPage from './pages/LoginPage'
 import SessionPage from './pages/SessionPage'
 import SettingsPage from './pages/SettingsPage'
 import StatsPage from './pages/StatsPage'
@@ -16,7 +21,37 @@ const NAV = [
   { to: '/settings', label: 'Ajustes', d: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6' },
 ]
 
+/** Fondo vivo y contenido de las pantallas sin sesión. */
+function Bare({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-dvh">
+      <div className="live-bg" aria-hidden><i /><i /><i /><i /></div>
+      {children}
+    </div>
+  )
+}
+
+/** La app solo funciona con cuenta: sin sesión → acceso (o registro por invitación); con reinicio de contraseña → cambio obligatorio. */
 export default function App() {
+  const auth = useAuth()
+  if (mockAuthActive()) {
+    if (auth.status === 'loading') return <Bare><main className="grid min-h-dvh place-items-center text-sm text-mute" aria-busy="true">Cargando…</main></Bare>
+    if (auth.status !== 'authenticated') {
+      return (
+        <Bare>
+          <Routes>
+            <Route path="/invitacion/:codigo" element={<InvitePage />} />
+            <Route path="*" element={<LoginPage />} />
+          </Routes>
+        </Bare>
+      )
+    }
+    if (auth.mustChangePassword) return <Bare><ForcedPasswordChange /></Bare>
+  }
+  return <MainApp />
+}
+
+function MainApp() {
   const link = ({ isActive }: { isActive: boolean }) =>
     `press flex flex-1 md:flex-none flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3
      rounded-2xl px-1 py-2 md:px-4 md:py-3 text-[0.65rem] md:text-sm font-semibold ${
@@ -58,6 +93,7 @@ export default function App() {
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/invitacion/:codigo" element={<InvitePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

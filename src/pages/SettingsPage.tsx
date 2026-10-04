@@ -1,3 +1,5 @@
+import AccountSection from '../components/auth/AccountSection'
+import { mockAuthActive } from '../components/auth/authShim'
 import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
 import { KindIcon, LoginForm, StatusFacts, SyncBanner } from '../components/SyncUI'
 import { kindDesc, kindLabel, kindTone } from '../components/syncMeta'
@@ -10,6 +12,7 @@ import { SYNC_TABLES } from '../lib/syncTables'
 function SyncSection() {
   const v = useSyncView()
   const ago = useAgo(v.lastSync)
+  if (!v.loggedIn && mockAuthActive()) return <p className="text-sm text-mute">La sincronización se activa al iniciar sesión con tu cuenta.</p>
   if (!v.loggedIn) {
     return (
       <>
@@ -61,7 +64,7 @@ export default function SettingsPage() {
 
   return (
     <Page title="Ajustes" eyebrow="Preferencias y datos">
-      <SyncBanner onLogin={focusLogin} />
+      {mockAuthActive() ? <AccountSection /> : <SyncBanner onLogin={focusLogin} />}
 
       <section className="glass space-y-4 p-5">
         <SectionTitle>Sincronización</SectionTitle>
