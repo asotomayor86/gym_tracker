@@ -131,8 +131,6 @@ export default function SessionPage() {
                 <NameEn className="mt-0.5 text-sm">{exEn(eid)}</NameEn>
                 {gym && avail(eid) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(eid)} gymName={gym.name} /></div>}
               </div>
-              {!finished && groups.length > 1 && <MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} />}
-              {!finished && <LastAttemptButton exerciseId={eid} exerciseName={exName(eid)} exerciseNameEn={exEn(eid)} excludeSessionId={session.id} onApply={(v) => applySuggestion(eid, v)} />}
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
             {sug && (
@@ -186,6 +184,12 @@ export default function SessionPage() {
               </div>
             ))}
             <Button variant="ghost" className="w-full" onClick={() => addSet(eid)}>+ Serie</Button>
+            {!finished && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <LastAttemptButton exerciseId={eid} exerciseName={exName(eid)} exerciseNameEn={exEn(eid)} excludeSessionId={session.id} onApply={(v) => applySuggestion(eid, v)} />
+                {groups.length > 1 && <div className="ml-auto"><MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} /></div>}
+              </div>
+            )}
           </section>
           )}
           </SortableItem>

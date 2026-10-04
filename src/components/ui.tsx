@@ -116,5 +116,5 @@ export function MuscleSelect({
 export function NameEn({ children, className = '' }: { children?: string | null; className?: string }) {
   const t = children?.trim()
   if (!t) return null
-  return <span lang="en" className={`block truncate text-[0.7em] font-normal italic leading-tight text-mute ${className}`}>{t}</span>
+  return <span lang="en" className={`block truncate text-[0.7em] font-normal leading-tight text-mute ${className}`}>{t}</span>
 }

@@ -97,17 +97,19 @@ export default function TemplateEditPage() {
                 <NameEn className="text-sm">{ex?.nameEn}</NameEn>
                 {gym && ex && avail(ex.id) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(ex.id)} gymName={gym.name} /></div>}
               </div>
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-              {ex && <LastAttemptButton iconOnly exerciseId={ex.id} exerciseName={name} exerciseNameEn={ex.nameEn} onApply={async (v) => { await update({ targetWeightKg: v.weightKg, targetReps: v.reps }); return 1 }} />}
-              <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
-              <Button variant="danger" className="!min-h-9 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
-              </div>
             </div>
             <div className="eyebrow grid grid-cols-4 gap-3 [&_input]:num [&_input]:mt-1 [&_input]:text-center [&_input]:text-lg [&_input]:normal-case [&_input]:tracking-normal [&_input]:text-ink">
               <label><span className="whitespace-nowrap">Series</span><CommitInput type="number" inputMode="numeric" value={r.targetSets} onCommit={(v) => update({ targetSets: Math.max(1, Math.round(num(v, r.targetSets))) })} /></label>
               <label>Reps<CommitInput type="number" inputMode="numeric" value={r.targetReps} onCommit={(v) => update({ targetReps: Math.max(1, Math.round(num(v, r.targetReps))) })} /></label>
               <label>KG<CommitInput type="number" inputMode="decimal" value={roundHalf(r.targetWeightKg)} onCommit={(v) => update({ targetWeightKg: Math.max(0, num(v, 0)) })} /></label>
               <label title="Descanso en segundos"><span className="whitespace-nowrap">Desc.</span><CommitInput aria-label="Descanso en segundos" type="number" inputMode="numeric" value={r.restS} onCommit={(v) => update({ restS: Math.max(0, Math.round(num(v, r.restS))) })} /></label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {ex && <LastAttemptButton exerciseId={ex.id} exerciseName={name} exerciseNameEn={ex.nameEn} onApply={async (v) => { await update({ targetWeightKg: v.weightKg, targetReps: v.reps }); return 1 }} />}
+              <div className="ml-auto flex items-center gap-1.5">
+              <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
+              <Button variant="danger" className="!min-h-11 !min-w-11 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
+              </div>
             </div>
           </div>
           )}

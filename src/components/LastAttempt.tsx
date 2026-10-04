@@ -44,7 +44,7 @@ export function LastAttemptButton({ exerciseId, exerciseName, exerciseNameEn, ex
     <>
       <button
         type="button" onClick={() => setOpen(true)} aria-label={`Último intento de ${exerciseName}`}
-        className={`press inline-flex items-center justify-center gap-1.5 rounded-full border border-hair text-xs font-semibold text-mute hover:text-ink ${iconOnly ? 'size-10' : 'min-h-10 px-3.5'} ${className}`}
+        className={`press inline-flex items-center justify-center gap-1.5 rounded-full border border-hair text-xs font-semibold text-mute hover:text-ink ${iconOnly ? 'size-11' : 'min-h-11 px-3.5'} ${className}`}
       >
         <IconHistory />{!iconOnly && 'Último intento'}
       </button>

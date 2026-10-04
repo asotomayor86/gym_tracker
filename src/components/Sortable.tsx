@@ -70,7 +70,7 @@ export function DragHandle({ handle, label }: { handle: HandleProps; label: stri
 
 /** Botones subir/bajar (táctil y teclado). */
 export function MoveButtons({ label, first, last, onMove }: { label: string; first: boolean; last: boolean; onMove: (dir: -1 | 1) => void }) {
-  const cls = 'press grid size-9 place-items-center rounded-lg border border-hair text-sm text-mute hover:text-ink disabled:pointer-events-none disabled:opacity-30'
+  const cls = 'press grid size-11 place-items-center rounded-xl border border-hair text-sm text-mute hover:text-ink disabled:pointer-events-none disabled:opacity-30'
   return (
     <span className="flex shrink-0 gap-1">
       <button type="button" className={cls} disabled={first} aria-label={`Subir ${label}`} onClick={() => onMove(-1)}>↑</button>
