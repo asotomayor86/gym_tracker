@@ -21,17 +21,17 @@ describe('gymData', () => {
     }
   })
 
-  it('solo hay filas verificadas: 22 sí y 16 no; solo gemelos en prensa queda sin verificar', () => {
+  it('solo hay filas verificadas: 23 sí y 16 no, y ningún ejercicio del catálogo queda sin verificar', () => {
     const rows = availabilityRows()
-    expect(rows.filter((r) => r.available).length).toBe(22)
+    expect(rows.filter((r) => r.available).length).toBe(23)
     expect(rows.filter((r) => !r.available).length).toBe(16)
     expect(new Set(rows.map((r) => `${r.exerciseId}:${r.gymId}`)).size).toBe(rows.length)
     expect(availabilityOf('seed-ex-abductores-en-maquina', 'gym-forus')).toBe(true)
     expect(availabilityOf('seed-ex-aductores-en-maquina', 'gym-forus')).toBe(true)
-    expect(availabilityOf('seed-ex-elevacion-de-gemelos-en-prensa', 'gym-forus')).toBeUndefined()
+    expect(availabilityOf('seed-ex-elevacion-de-gemelos-en-prensa', 'gym-forus')).toBe(true)
     // los sin verificar son exactamente los ejercicios del catálogo sin fila
     const sinFila = [...exerciseIds].filter((id) => !AVAILABILITY[id]).sort()
-    expect(sinFila).toEqual(['seed-ex-elevacion-de-gemelos-en-prensa'])
+    expect(sinFila).toEqual([])
   })
 
   it('casos de referencia', () => {

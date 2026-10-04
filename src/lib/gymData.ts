@@ -3,7 +3,7 @@
  * Fuente: fotos de las máquinas del gimnasio y confirmación del usuario (2026-10-04).
  *
  * AVAILABILITY solo contiene filas VERIFICADAS: true = hay máquina, false = confirmado que no existe.
- * Un ejercicio sin fila está "sin verificar" (hoy: solo Elevación de gemelos en prensa).
+ * Un ejercicio sin fila está "sin verificar" (hoy: ninguno).
  */
 
 export interface GymSeed {
@@ -29,7 +29,7 @@ export const AVAILABILITY: Record<string, Record<string, boolean>> = {
   'seed-ex-patada-de-gluteo-en-maquina': { [FORUS]: true }, // Glute
   'seed-ex-hip-thrust-en-maquina': { [FORUS]: true }, // Hip Thrust
   'seed-ex-elevacion-de-gemelos-sentado': { [FORUS]: false },
-  // 'seed-ex-elevacion-de-gemelos-en-prensa': sin verificar (depende de la plataforma de la Leg Press)
+  'seed-ex-elevacion-de-gemelos-en-prensa': { [FORUS]: true }, // confirmado por el usuario (2026-10-04): la Leg Press permite hacer gemelos
   // Pecho
   'seed-ex-press-de-pecho-en-maquina': { [FORUS]: true }, // Chest Press
   'seed-ex-press-inclinado-en-maquina': { [FORUS]: true }, // Chest Incline
