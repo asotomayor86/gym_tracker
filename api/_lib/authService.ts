@@ -291,10 +291,12 @@ export interface InvitationView {
 
 export async function listInvitations(db: Db, now = Date.now()): Promise<InvitationView[]> {
   const rows = await db.select().from(invitations)
+  const emails = new Map((await db.select({ id: users.id, email: users.email }).from(users)).map((u) => [u.id, u.email]))
   return rows
     .sort((a, b) => b.createdAt - a.createdAt)
     .map(({ codeHash: _h, createdBy: _c, ...r }) => ({
       ...r,
+      usedBy: r.usedBy ? (emails.get(r.usedBy) ?? r.usedBy) : null, // se muestra el correo de quien la usó
       status: r.revokedAt ? 'revoked' : r.usedAt ? 'used' : r.expiresAt <= now ? 'expired' : 'active',
     }))
 }

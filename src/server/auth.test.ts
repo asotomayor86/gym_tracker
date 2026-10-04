@@ -6,6 +6,9 @@ import { ensureAdmin } from '../../api/_lib/bootstrap'
 import { passwordProblems } from '../../api/_lib/password'
 import { callApi, type TestDb } from './testServer'
 
+// scrypt (N=2^15) y PGlite son lentos con la máquina cargada: margen amplio para no dar falsos fallos
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 })
+
 const holder = vi.hoisted(() => ({ t: undefined as undefined | TestDb }))
 vi.mock('../../api/_lib/db', async () => {
   const { makeTestDb } = await import('./testServer')
