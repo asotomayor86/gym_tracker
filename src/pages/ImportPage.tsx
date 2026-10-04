@@ -32,6 +32,7 @@ const toDraft = (r: ImportReview): Draft =>
 const ERROR_TEXT: Record<string, string> = {
   'not-recognized': 'La imagen no parece una captura de Fitdays. Prueba con la pantalla del informe de la báscula.',
   unreadable: 'No se pudo leer la imagen. Usa una captura nítida y completa.',
+  'engine-failed': 'Sin conexión: la primera vez hace falta descargar el motor (~6 MB). Conéctate e inténtalo de nuevo.',
 }
 
 /** Importar la composición corporal desde una captura de la báscula (Fitdays): se lee en el móvil y se confirma antes de guardar. */
@@ -131,7 +132,7 @@ export default function ImportPage() {
             {phase.k === 'reading' && (
               <div role="status" className="space-y-2">
                 <div className="flex items-baseline justify-between text-sm">
-                  <span className="font-semibold">{phase.progress.stage === 'engine' ? 'Descargando motor (~10 MB)…' : 'Leyendo imagen…'}</span>
+                  <span className="font-semibold">{phase.progress.stage === 'engine' ? 'Descargando motor (~6 MB)…' : 'Leyendo imagen…'}</span>
                   <span className="num text-xs text-mute">{Math.round(phase.progress.fraction * 100)} %</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--hair)' }}>
@@ -190,7 +191,7 @@ export default function ImportPage() {
                           className={`${inputCls} num !min-h-10 !w-28 text-right text-base ${err ? '!border-e-fail' : ''}`} value={f.text} placeholder="—"
                           onChange={(e) => setDraft({ ...draft, [m.key]: { ...f, text: e.target.value, status: e.target.value.trim() ? 'detected' : f.status === 'detected' ? 'missing' : f.status } })}
                         />
-                        <span className="w-9 text-xs text-mute">{m.unit}</span>
+                        <span className="inline-block w-9 shrink-0 text-xs text-mute">{m.unit}</span>
                       </span>
                       {note && <p id={`${uid}-${m.key}-e`} role={err ? 'alert' : undefined} className={`basis-full text-xs ${err ? 'text-e-fail' : 'text-mute'}`}>{note}</p>}
                     </li>
