@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { WeightEvolution } from '../components/weight/WeightEvolution'
 import { HeatBar, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
@@ -55,6 +56,11 @@ export default function StatsPage() {
             <p className="eyebrow">1RM estimado (Epley) por sesión · {history.length} sesiones</p>
           </>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <SectionTitle n="03" aside="media móvil de 7 días">Evolución del peso corporal</SectionTitle>
+        <WeightEvolution registerLink />
       </section>
     </Page>
   )

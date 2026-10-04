@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, EmptyState, Page, SectionTitle, inputCls } from '../components/ui'
-import WeightChart from '../components/weight/WeightChart'
+import { Button, Page, SectionTitle, inputCls } from '../components/ui'
+import { WeightEvolution } from '../components/weight/WeightEvolution'
 import { fmtDayLong, fmtNum } from '../components/weight/weightFormat'
 import {
-  WEIGHT_MAX_KG, WEIGHT_MIN_KG, addDays, isoDate, movingAverage, removeBodyWeight, setBodyWeight, useBodyWeights, weightTrend,
+  WEIGHT_MAX_KG, WEIGHT_MIN_KG, isoDate, removeBodyWeight, setBodyWeight, useBodyWeights, weightTrend,
 } from '../components/weight/weightData'
 import { usePrefs } from '../lib/prefs'
 import { fromKg, toKg } from '../lib/units'
-
-const RANGES = [{ k: '30', label: '30 d', days: 30 }, { k: '90', label: '90 d', days: 90 }, { k: '365', label: '1 año', days: 365 }, { k: 'all', label: 'Todo', days: 0 }] as const
 
 /** Entrada de peso reutilizable (página y tarjeta de Hoy). */
 export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; date?: string; onSaved?: () => void }) {
@@ -67,50 +65,11 @@ export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; dat
   )
 }
 
-function Fact({ k, v, sub }: { k: string; v: string; sub?: string }) {
-  return (
-    <div className="rounded-2xl border border-hair bg-ink/5 px-3 py-3 text-center">
-      <div className="eyebrow !text-[0.62rem]">{k}</div>
-      <div className="num mt-1 text-lg font-semibold">{v}</div>
-      {sub && <div className="text-[0.68rem] text-mute">{sub}</div>}
-    </div>
-  )
-}
-
-/** Barra de calor de la variación: parte del centro; hacia la izquierda en acero frío (baja), hacia la derecha en ámbar (sube). */
-function TrendBar({ deltaKg }: { deltaKg: number }) {
-  const pct = Math.min(1, Math.abs(deltaKg) / 3) * 50
-  return (
-    <div className="space-y-1.5">
-      <div className="relative h-2 rounded-full" style={{ background: 'var(--hair)' }} role="img" aria-label={`Variación de ${deltaKg > 0 ? '+' : ''}${fmtNum(deltaKg)} kg`}>
-        <div className="absolute inset-y-0 left-1/2 w-px" style={{ background: 'var(--mute)' }} />
-        <div
-          className="absolute inset-y-0 rounded-full"
-          style={deltaKg >= 0
-            ? { left: '50%', width: `${pct}%`, background: 'linear-gradient(90deg, var(--ink), #ffb000)' }
-            : { right: '50%', width: `${pct}%`, background: 'linear-gradient(270deg, var(--cold), var(--ink))' }}
-        />
-      </div>
-      <div className="flex justify-between text-[0.65rem] uppercase tracking-widest text-mute"><span>Baja</span><span>Sin cambio</span><span>Sube</span></div>
-    </div>
-  )
-}
-
 export default function BodyWeightPage() {
   const { unit } = usePrefs()
   const rows = useBodyWeights()
-  const [range, setRange] = useState<(typeof RANGES)[number]['k']>('90')
   const [editing, setEditing] = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
-  const today = isoDate()
-  const days = RANGES.find((r) => r.k === range)!.days
-  const from = days ? addDays(today, -days) : rows[0]?.date ?? today
-
-  const view = useMemo(() => rows.filter((r) => r.date >= from), [rows, from])
-  const avg = useMemo(() => movingAverage(rows), [rows])
-  const trend = useMemo(() => weightTrend(rows, Math.max(7, days || 90)), [rows, days])
-  const last = rows[rows.length - 1]
-  const lastAvg = avg[avg.length - 1]
   const hist = [...rows].reverse().slice(0, 30)
 
   return (
@@ -122,29 +81,7 @@ export default function BodyWeightPage() {
 
       <section>
         <SectionTitle n="02" aside="media móvil de 7 días">Evolución</SectionTitle>
-        {rows.length === 0 ? (
-          <EmptyState>Aún no hay medidas. Registra tu peso y aquí verás cómo evoluciona.</EmptyState>
-        ) : (
-          <div className="glass space-y-4 p-4">
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Periodo">
-              {RANGES.map((r) => (
-                <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}
-                  className={`press min-h-9 rounded-full border px-3.5 text-xs font-semibold ${range === r.k ? 'border-signal bg-signal text-on-signal' : 'border-hair text-mute hover:text-ink'}`}>{r.label}</button>
-              ))}
-            </div>
-            {view.length >= 2 ? (
-              <WeightChart points={view} unit={unit} from={days ? from : view[0].date} to={today} />
-            ) : (
-              <p className="rounded-xl bg-ink/5 px-4 py-6 text-center text-sm text-mute">Necesitas al menos dos medidas en este periodo para dibujar la curva.</p>
-            )}
-            <div className="grid grid-cols-3 gap-2">
-              <Fact k="Último" v={`${fmtNum(fromKg(last.weightKg, unit))}`} sub={unit} />
-              <Fact k="Media 7 d" v={`${fmtNum(fromKg(lastAvg.avg, unit))}`} sub={unit} />
-              <Fact k={`Variación`} v={trend ? `${trend.deltaKg > 0 ? '+' : ''}${fmtNum(fromKg(trend.deltaKg, unit))}` : '—'} sub={trend ? `${trend.perWeekKg > 0 ? '+' : ''}${fmtNum(fromKg(trend.perWeekKg, unit))} ${unit}/sem` : 'faltan datos'} />
-            </div>
-            {trend && <TrendBar deltaKg={trend.deltaKg} />}
-          </div>
-        )}
+        <WeightEvolution />
       </section>
 
       {hist.length > 0 && (
