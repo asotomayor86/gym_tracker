@@ -3,6 +3,7 @@ import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components
 import { KindIcon, StatusFacts } from '../components/SyncUI'
 import { kindDesc, kindLabel, kindTone } from '../components/syncMeta'
 import { db } from '../db/db'
+import { useGyms } from '../lib/gyms'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { syncNow } from '../lib/sync'
 import { useAgo, useSyncView } from '../lib/syncView'
@@ -35,6 +36,7 @@ function SyncSection() {
 
 export default function SettingsPage() {
   const prefs = usePrefs()
+  const gyms = useGyms()
 
   const exportJson = async () => {
     const data: Record<string, unknown> = {}
@@ -62,6 +64,14 @@ export default function SettingsPage() {
             <option value="kg">Kilos (kg)</option>
             <option value="lb">Libras (lb)</option>
           </select>
+        </label>
+        <label className="eyebrow block">
+          Gimnasio habitual
+          <select className={`${inputCls} mt-1 text-base normal-case tracking-normal text-ink`} value={prefs.gymId ?? ''} onChange={(e) => setPrefs({ gymId: e.target.value || null })}>
+            <option value="">Sin filtro (todos los ejercicios)</option>
+            {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+          <span className="mt-1 block text-xs font-normal normal-case tracking-normal text-mute">Oculta en rutinas y sesiones los ejercicios que no están en tu gimnasio.</span>
         </label>
         <label className="eyebrow block">
           Incremento al progresar (kg)

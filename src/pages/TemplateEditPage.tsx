@@ -1,6 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
+import { useGymContext } from '../components/gym/useGymContext'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
@@ -21,6 +23,7 @@ export default function TemplateEditPage() {
   )
   const exercises = useLiveQuery(() => db.exercises.filter(alive).toArray())
   const [localOrder, setLocalOrder] = useState<string[] | null>(null)
+  const { gym, avail } = useGymContext()
   if (!template || !rows || !exercises) return null
   const byId = new Map(exercises.map((e) => [e.id, e]))
   // orden de alta (position); mientras se guarda un arrastre se muestra el orden nuevo sin parpadeo
@@ -87,7 +90,10 @@ export default function TemplateEditPage() {
             <div className="flex items-center gap-2">
               <DragHandle handle={handle} label={name} />
               <span className="num text-xs text-signal-text">{String(i + 1).padStart(2, '0')}</span>
-              <div className="display min-w-0 flex-1 text-base leading-snug">{name}</div>
+              <div className="min-w-0 flex-1">
+                <div className="display text-base leading-snug">{name}</div>
+                {gym && ex && avail(ex.id) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(ex.id)} gymName={gym.name} /></div>}
+              </div>
               <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
               <Button variant="danger" className="!min-h-9 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
             </div>
@@ -103,12 +109,7 @@ export default function TemplateEditPage() {
         )
       })}
       </SortableList>
-      <select className={inputCls} value="" onChange={(e) => addExercise(e.target.value)}>
-        <option value="">+ Añadir ejercicio…</option>
-        {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map((e) => (
-          <option key={e.id} value={e.id}>{e.name}</option>
-        ))}
-      </select>
+      <ExercisePicker exercises={exercises} placeholder="+ Añadir ejercicio…" onPick={addExercise} />
     </Page>
   )
 }

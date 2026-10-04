@@ -46,7 +46,6 @@ export default function App() {
       <Bare>
         <Routes>
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
-          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<LoginPage />} />
         </Routes>
       </Bare>
@@ -98,6 +97,7 @@ function MainApp() {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/peso" element={<BodyWeightPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

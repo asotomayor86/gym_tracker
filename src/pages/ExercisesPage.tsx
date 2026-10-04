@@ -1,6 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { useAuth } from '../components/auth/authShim'
 import { GuideToggle } from '../components/ExerciseGuideView'
+import { AvailabilityChip } from '../components/gym/GymUI'
+import { useGymContext } from '../components/gym/useGymContext'
 import { Button, CommitInput, EmptyState, MuscleSelect, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
@@ -10,6 +13,8 @@ export default function ExercisesPage() {
   const exercises = useLiveQuery(() => db.exercises.filter(alive).toArray())
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
+  const isAdmin = useAuth().isAdmin // el catálogo es global: solo el administrador crea, edita y borra
+  const { gym, avail } = useGymContext()
 
   if (!exercises) return null
   const q = query.trim().toLowerCase()
@@ -23,9 +28,9 @@ export default function ExercisesPage() {
   }
 
   return (
-    <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={<Button onClick={add}>+ Nuevo</Button>}>
+    <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={isAdmin ? <Button onClick={add}>+ Nuevo</Button> : undefined}>
       <input className={`${inputCls} text-base`} type="search" placeholder="Buscar ejercicio…" value={query} onChange={(e) => setQuery(e.target.value)} />
-      {exercises.length === 0 && <EmptyState>Aún no hay ejercicios: crea el primero con «+ Nuevo».</EmptyState>}
+      {exercises.length === 0 && <EmptyState>{isAdmin ? 'Aún no hay ejercicios: crea el primero con «+ Nuevo».' : 'Aún no hay ejercicios en el catálogo.'}</EmptyState>}
       {MUSCLE_GROUPS.map((m) => {
         const list = shown.filter((e) => e.primaryMuscle === m)
         if (!list.length) return null
@@ -34,12 +39,15 @@ export default function ExercisesPage() {
             <SectionTitle aside={String(list.length)}>{MUSCLE_LABELS[m]}</SectionTitle>
             <div className="glass-flat divide-y divide-hair overflow-hidden">
               {list.map((e) =>
-                editing === e.id ? (
+                isAdmin && editing === e.id ? (
                   <ExerciseForm key={e.id} exercise={e} onClose={() => setEditing(null)} />
                 ) : (
                   <div key={e.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 transition-colors hover:bg-ink/5">
-                    <button onClick={() => setEditing(e.id)} className="min-w-0 flex-1 py-1 text-left">
-                      <div className="font-semibold">{e.name}</div>
+                    <button onClick={() => isAdmin && setEditing(e.id)} disabled={!isAdmin} className="min-w-0 flex-1 py-1 text-left disabled:cursor-default">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-semibold">{e.name}</span>
+                        {gym && <AvailabilityChip status={avail(e.id)} gymName={gym.name} showOk />}
+                      </div>
                       <div className="text-xs text-mute">
                         {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
                       </div>

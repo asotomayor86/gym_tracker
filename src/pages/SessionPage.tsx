@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { GuideToggle } from '../components/ExerciseGuideView'
+import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
+import { useGymContext } from '../components/gym/useGymContext'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
@@ -31,6 +33,7 @@ export default function SessionPage() {
   const { unit, incrementKg } = usePrefs()
   const [restUntil, setRestUntil] = useState<number | null>(null)
   const [localOrder, setLocalOrder] = useState<string[] | null>(null)
+  const { gym, avail } = useGymContext()
 
   const session = useLiveQuery(() => db.sessions.get(id!), [id])
   const logs = useLiveQuery(() => db.setLogs.where('sessionId').equals(id!).filter(alive).toArray(), [id])
@@ -110,7 +113,10 @@ export default function SessionPage() {
             <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
               {!finished && <DragHandle handle={handle} label={exName(eid)} />}
               <span className="num text-xs text-signal-text">{String(gi + 1).padStart(2, '0')}</span>
-              <h2 className="display min-w-0 flex-1 text-xl leading-snug">{exName(eid)}</h2>
+              <div className="min-w-0 flex-1">
+                <h2 className="display text-xl leading-snug">{exName(eid)}</h2>
+                {gym && avail(eid) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(eid)} gymName={gym.name} /></div>}
+              </div>
               {!finished && groups.length > 1 && <MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} />}
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
@@ -172,16 +178,7 @@ export default function SessionPage() {
       })}
       </SortableList>
 
-      <select
-        className={inputCls}
-        value=""
-        onChange={async (e) => e.target.value && addSet(e.target.value)}
-      >
-        <option value="">+ Añadir ejercicio a la sesión…</option>
-        {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map((e) => (
-          <option key={e.id} value={e.id}>{e.name}</option>
-        ))}
-      </select>
+      <ExercisePicker exercises={exercises} placeholder="+ Añadir ejercicio a la sesión…" onPick={(id) => void addSet(id)} />
 
       <div className="flex gap-2">
         {!finished && <Button className="flex-1" onClick={finish}>Terminar sesión</Button>}

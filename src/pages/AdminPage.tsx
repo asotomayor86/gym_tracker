@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import {
   createInvitation, listInvitations, listUsers, logoutUser, resetPassword, revokeInvitation, updateUser,
   type AdminUser, type Invitation, type Role,
 } from '../components/admin/adminShim'
 import { useAuth } from '../components/auth/authShim'
-import { Button, Page, SectionTitle, inputCls } from '../components/ui'
+import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
+import { alive, db } from '../db/db'
+import { availabilityIndex, removeGym, saveGym, setAvailability, useExerciseGyms, useGyms } from '../lib/gyms'
+import { MUSCLE_LABELS } from '../lib/labels'
+import { MUSCLE_GROUPS } from '../lib/types'
 
 const dateFmt = (ms: number) => new Date(ms).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 const ago = (ms: number | null) => {
@@ -170,27 +175,144 @@ function Users() {
   return <ul className="space-y-4">{data.map((u) => <UserCard key={u.id} u={u} me={u.id === auth.user?.id} onChanged={reload} />)}</ul>
 }
 
-const TABS: { k: 'inv' | 'users'; label: string; node: ReactNode }[] = [
+function Gyms() {
+  const gyms = useGyms()
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const [del, setDel] = useState<string | null>(null)
+  const create = async () => {
+    try { await saveGym({ name }); setName(''); setError('') } catch { setError('Escribe un nombre para el gimnasio.') }
+  }
+  return (
+    <div className="space-y-5">
+      <section className="glass space-y-3 p-4">
+        <h2 className="display text-base">Nuevo gimnasio</h2>
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void create() }}>
+          <input className={`${inputCls} min-w-0 flex-1 text-base`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre (p. ej. Forus)" aria-label="Nombre del gimnasio" />
+          <Button type="submit" className="shrink-0">Añadir</Button>
+        </form>
+        {error && <p role="alert" className="text-sm text-e-fail">{error}</p>}
+      </section>
+      <section>
+        <SectionTitle aside={String(gyms.length)}>Gimnasios</SectionTitle>
+        {gyms.length === 0 ? <p className="text-sm text-mute">Aún no hay gimnasios.</p> : (
+          <ul className="space-y-3">
+            {gyms.map((g) => (
+              <li key={g.id} className="glass space-y-2 p-4">
+                <CommitInput value={g.name} className={`${inputCls} display !text-lg`} onCommit={(v) => v.trim() && saveGym({ id: g.id, name: v })} />
+                <CommitInput value={g.notes} placeholder="Notas (opcional)" onCommit={(v) => saveGym({ id: g.id, name: g.name, notes: v })} className={`${inputCls} text-sm`} />
+                {del === g.id ? (
+                  <div className="flex flex-wrap items-center gap-2" role="group">
+                    <span className="text-xs text-mute">Se borrarán también sus marcas de disponibilidad.</span>
+                    <Button variant="danger" className="!min-h-9 px-3 text-xs" onClick={async () => { await removeGym(g.id); setDel(null) }}>Sí, borrar</Button>
+                    <Button variant="ghost" className="!min-h-9 px-3 text-xs" onClick={() => setDel(null)}>Cancelar</Button>
+                  </div>
+                ) : <Button variant="ghost" className="!min-h-9 px-3 text-xs" onClick={() => setDel(g.id)}>Borrar gimnasio</Button>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
+
+type Mark = true | false | null
+const MARKS: { v: Mark; icon: string; aria: string }[] = [
+  { v: true, icon: '✓', aria: 'Disponible' },
+  { v: false, icon: '✕', aria: 'No disponible' },
+  { v: null, icon: '?', aria: 'Sin verificar' },
+]
+
+/** Matriz ejercicio × gimnasio: tres estados por celda (disponible / no / sin verificar). */
+function Availability() {
+  const gyms = useGyms()
+  const rows = useExerciseGyms()
+  const exercises = useLiveQuery(() => db.exercises.filter(alive).toArray(), [], [])
+  const [gymId, setGymId] = useState('')
+  const [query, setQuery] = useState('')
+  const [onlyPending, setOnlyPending] = useState(false)
+  const gid = gymId || gyms[0]?.id || ''
+  if (gyms.length === 0) return <p className="text-sm text-mute">Primero crea un gimnasio en la pestaña Gimnasios.</p>
+  const idx = availabilityIndex(gid, rows)
+  const state = (id: string): Mark => { const a = idx(id); return a === 'available' ? true : a === 'unavailable' ? false : null }
+  const count = (m: Mark) => exercises.filter((e) => state(e.id) === m).length
+  const q = query.trim().toLowerCase()
+  const shown = exercises.filter((e) => e.name.toLowerCase().includes(q) && (!onlyPending || state(e.id) === null)).sort((a, b) => a.name.localeCompare(b.name))
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label><span className="eyebrow">Gimnasio</span>
+          <select className={`${inputCls} mt-1 text-base`} value={gid} onChange={(e) => setGymId(e.target.value)}>
+            {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </label>
+        <label><span className="eyebrow">Buscar</span>
+          <input className={`${inputCls} mt-1 text-base`} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ejercicio…" />
+        </label>
+      </div>
+      <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute" aria-live="polite">
+        <span><b className="text-ink">{count(true)}</b> disponibles</span><span><b className="text-ink">{count(false)}</b> no</span><span><b className="text-ink">{count(null)}</b> sin verificar</span>
+        <label className="ml-auto flex items-center gap-2"><input type="checkbox" className="size-4 accent-[var(--signal)]" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} />Solo sin verificar</label>
+      </p>
+      {MUSCLE_GROUPS.map((m) => {
+        const list = shown.filter((e) => e.primaryMuscle === m)
+        if (!list.length) return null
+        return (
+          <section key={m}>
+            <SectionTitle aside={String(list.length)}>{MUSCLE_LABELS[m]}</SectionTitle>
+            <ul className="glass-flat divide-y divide-hair overflow-hidden">
+              {list.map((e) => (
+                <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="min-w-0 flex-1 text-sm font-semibold">{e.name}</span>
+                  <span className="flex shrink-0 gap-1" role="group" aria-label={`Disponibilidad de ${e.name}`}>
+                    {MARKS.map((k) => {
+                      const on = state(e.id) === k.v
+                      const onCls = k.v === true ? 'border-e-easy bg-e-easy text-e-easy-ink' : k.v === false ? 'border-e-fail bg-e-fail text-on-signal' : 'border-signal bg-signal text-on-signal'
+                      return (
+                        <button key={String(k.v)} type="button" aria-pressed={on} aria-label={k.aria} title={k.aria} onClick={() => void setAvailability(e.id, gid, k.v)}
+                          className={`press grid size-9 place-items-center rounded-lg border text-xs font-semibold ${on ? onCls : 'border-hair text-mute hover:text-ink'}`}>
+                          <span aria-hidden>{k.icon}</span>
+                        </button>
+                      )
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+const TABS: { k: 'inv' | 'users' | 'gyms' | 'avail'; label: string; node: ReactNode }[] = [
   { k: 'inv', label: 'Invitaciones', node: <Invitations /> },
   { k: 'users', label: 'Usuarios', node: <Users /> },
+  { k: 'gyms', label: 'Gimnasios', node: <Gyms /> },
+  { k: 'avail', label: 'Disponibilidad', node: <Availability /> },
 ]
 
 /** Panel de administración (solo role = admin): invitaciones y usuarios. */
 
+/** En desarrollo, ?devadmin permite ver el panel sin cuenta de administrador. */
+const devAdmin = import.meta.env.DEV && new URLSearchParams(location.search).has('devadmin')
+
 export default function AdminPage() {
   const auth = useAuth()
   const [tab, setTab] = useState<(typeof TABS)[number]['k']>('inv')
-  if (!auth.isAdmin) {
+  if (!auth.isAdmin && !devAdmin) {
     return (
       <Page title="Admin"><p className="text-mute">Esta sección es solo para administradores. <Link to="/" className="underline decoration-signal decoration-2 underline-offset-4">Volver</Link></p></Page>
     )
   }
   return (
     <Page title="Admin" eyebrow="Administración">
-      <div className="glass flex rounded-full p-1" role="tablist" aria-label="Secciones de administración">
+      <div className="glass flex overflow-x-auto rounded-full p-1" role="tablist" aria-label="Secciones de administración">
         {TABS.map((t) => (
           <button key={t.k} role="tab" aria-selected={tab === t.k} type="button" onClick={() => setTab(t.k)}
-            className={`min-h-10 flex-1 rounded-full px-4 text-sm font-semibold transition-colors ${tab === t.k ? 'bg-signal text-on-signal' : 'text-mute hover:text-ink'}`}>{t.label}</button>
+            className={`min-h-10 flex-1 whitespace-nowrap rounded-full px-3 text-xs font-semibold transition-colors sm:px-4 sm:text-sm ${tab === t.k ? 'bg-signal text-on-signal' : 'text-mute hover:text-ink'}`}>{t.label}</button>
         ))}
       </div>
       <div role="tabpanel">{TABS.find((t) => t.k === tab)!.node}</div>
