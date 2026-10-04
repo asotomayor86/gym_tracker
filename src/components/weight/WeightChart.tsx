@@ -1,11 +1,9 @@
 import { useId, useMemo, useState } from 'react'
 import type { Unit } from '../../lib/units'
 import { fromKg } from '../../lib/units'
+import { fmtDay, fmtDayLong, fmtNum } from './weightFormat'
 import { dayIndex, movingAverage, type Point } from './weightData'
 
-export const fmtNum = (n: number, d = 1) => n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d })
-const fmtDay = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-export const fmtDayLong = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
 const W = 360, H = 200, L = 36, R = 12, T = 14, B = 26
 

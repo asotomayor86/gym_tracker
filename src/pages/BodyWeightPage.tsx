@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, EmptyState, Page, SectionTitle, inputCls } from '../components/ui'
-import WeightChart, { fmtDayLong, fmtNum } from '../components/weight/WeightChart'
+import WeightChart from '../components/weight/WeightChart'
+import { fmtDayLong, fmtNum } from '../components/weight/weightFormat'
 import {
   WEIGHT_MAX_KG, WEIGHT_MIN_KG, addDays, isoDate, movingAverage, removeBodyWeight, setBodyWeight, useBodyWeights, weightTrend,
 } from '../components/weight/weightData'
