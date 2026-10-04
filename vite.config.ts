@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // la versión nueva espera hasta que el usuario pulse «Recargar» (UpdateBanner)
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Gym Tracker',
