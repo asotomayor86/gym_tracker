@@ -8,6 +8,8 @@
  *  e) CONTINUIDAD: sin cambios bruscos entre fotogramas (detecta inversiones del IK, como la rodilla de los gemelos);
  *  f) nada bajo el suelo, cabeza dentro del lienzo, manos en la barra cuando el cuerpo cuelga;
  *  g) los ángulos que calcula este test A PARTIR DE LAS POSICIONES coinciden con los `joints` que devuelve poseAt
+ *  h) modo TRONCO (extensión lumbar): inclinación −15…60°, continua; la cadera se mide con la vertical de la pelvis;
+ *  i) abducción de cadera de pie (vista frontal): 0…45°, continua, rodilla casi extendida.
  *     (doble comprobación independiente: si el rig cambiara su convención de signos, se vería aquí).
  * Los mensajes dicen ficha, articulación y fotograma.
  */
@@ -52,12 +54,17 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
   const issues: Issue[] = []
   const bad = (articulacion: string, fotograma: string, detalle: string) => { if (issues.length < 6) issues.push({ ficha, articulacion, fotograma, detalle }) }
   const leg = d.limb === 'pierna'
-  const frontalLeg = leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(toPx(d.to)[1] - toPx(d.from)[1]) < 2 && Math.abs(toPx(d.to)[0] - toPx(d.from)[0]) > 3
-  let prev: { f: string; q: RigPose; knee: number; elbow: number; sh: number; hip: number } | null = null
+  const trunkMode = d.limb === 'tronco'
+  const abdMode = d.hipAbduction !== undefined
+  const frontalLeg = abdMode || leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(toPx(d.to)[1] - toPx(d.from)[1]) < 2 && Math.abs(toPx(d.to)[0] - toPx(d.from)[0]) > 3
+  let prev: { f: string; q: RigPose; knee: number; elbow: number; sh: number; hip: number; trunk: number; abd: number } | null = null
   for (const { p, label } of frames()) {
     const raw = poseAt(d, p)
     const q = mutate ? mutate(raw, p, label) : raw
-    const knee = kneeFlex(q), elbow = elbowFlex(q), sh = shoulderAngle(q), hip = hipAngle(q)
+    const knee = kneeFlex(q), elbow = elbowFlex(q), sh = shoulderAngle(q)
+    // modo tronco: la pelvis no se mueve, la cadera se mide con la vertical (no con hombro−cadera); abducción: el rig da el ángulo
+    const hip = trunkMode ? swing([0, 1], sub(q.knee, q.hip)) : abdMode ? q.hipAbductionDeg ?? 0 : hipAngle(q)
+    const trunk = q.trunkDeg ?? 0, abd = q.hipAbductionDeg ?? 0
     const f = `${label} (p=${p.toFixed(2)})`
     // g) coherencia con los ángulos que declara el rig (solo sin mutar)
     if (!mutate && q.plane === 'lateral') {
@@ -65,7 +72,7 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
       const unwrap = (a: number) => (a < -120 ? a + 360 : a)
       if (!frontalLeg && Math.abs(j.knee.deg - knee) > 0.6) bad('rodilla', f, `el rig dice ${j.knee.deg.toFixed(1)}° y la geometría ${knee.toFixed(1)}° (convención de signos distinta)`)
       if (Math.abs(j.elbow.deg - elbow) > 0.6) bad('codo', f, `el rig dice ${j.elbow.deg.toFixed(1)}° y la geometría ${elbow.toFixed(1)}°`)
-      if (Math.abs(unwrap(j.hip.deg) - hip) > 0.6) bad('cadera', f, `el rig dice ${j.hip.deg.toFixed(1)}° y la geometría ${hip.toFixed(1)}°`)
+      if (!trunkMode && Math.abs(unwrap(j.hip.deg) - hip) > 0.6) bad('cadera', f, `el rig dice ${j.hip.deg.toFixed(1)}° y la geometría ${hip.toFixed(1)}°`)
       if (Math.abs(unwrap(j.shoulder.deg) - sh) > 0.6) bad('hombro', f, `el rig dice ${j.shoulder.deg.toFixed(1)}° y la geometría ${sh.toFixed(1)}°`)
     }
     // a) rodilla
@@ -83,6 +90,17 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
       bad('codo (frontal)', f, `giro del antebrazo ${q.frontalElbowDeg.toFixed(1)}° (máx 150°)`)
     }
     if (!frontalLeg && (hip < -20 || hip > 120)) bad('cadera', f, `${hip.toFixed(1)}° fuera de −20…120°`)
+    // h) tronco
+    if (trunkMode) {
+      if (q.trunkDeg === undefined) bad('tronco', f, 'el rig no devuelve trunkDeg')
+      else if (trunk < -15 || trunk > 60) bad('tronco', f, `inclinación ${trunk.toFixed(1)}° fuera de −15…60°`)
+    }
+    // i) abducción de cadera de pie
+    if (abdMode) {
+      if (q.hipAbductionDeg === undefined) bad('abducción de cadera', f, 'el rig no devuelve hipAbductionDeg')
+      else if (abd < 0 || abd > 45) bad('abducción de cadera', f, `${abd.toFixed(1)}° fuera de 0…45°`)
+      if (Math.abs(q.joints.knee.deg) > 8) bad('rodilla', f, `en abducción debe ir casi extendida: ${q.joints.knee.deg.toFixed(1)}°`)
+    }
     // d) tobillo
     if (q.plantarDeg > 50) bad('tobillo', f, `plantarflexión ${q.plantarDeg.toFixed(1)}° (máx 50°)`)
     // f) suelo, cabeza, manos en agarre
@@ -90,7 +108,7 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
       if (pt[1] > FLOOR + 0.5) bad(name, f, `bajo el suelo: y=${pt[1].toFixed(1)} (suelo ${FLOOR})`)
     }
     if (q.headTop < 0) bad('cabeza', f, `fuera del lienzo: y=${q.headTop.toFixed(1)}`)
-    if (q.target && dist(q.wrist, q.target) > 2) bad('mano', f, `a ${dist(q.wrist, q.target).toFixed(1)} px de la barra`)
+    if (q.target && !trunkMode && dist(q.wrist, q.target) > 2) bad('mano', f, `a ${dist(q.wrist, q.target).toFixed(1)} px de la barra`)
     // e) continuidad con el fotograma anterior
     if (prev) {
       const step = (name: string, a: number, b: number, max: number) => {
@@ -99,7 +117,9 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
       }
       if (!frontalLeg) step('rodilla', prev.knee, knee, 8)
       if (q.plane === 'lateral') { step('codo', prev.elbow, elbow, 8); step('hombro', prev.sh, sh, 8) }
-      step('cadera', prev.hip, hip, 8)
+      if (!abdMode) step('cadera', prev.hip, hip, 8)
+      if (trunkMode) step('tronco', prev.trunk, trunk, 8)
+      if (abdMode) step('abducción de cadera', prev.abd, abd, 8)
       // en vista frontal el brazo se dibuja con otra construcción: el IK lateral del brazo no se usa
       const joints: [string, P, P][] = [['rodilla (posición)', prev.q.knee, q.knee]]
       if (q.plane === 'lateral') joints.push(['codo (posición)', prev.q.elbow, q.elbow])
@@ -107,7 +127,7 @@ function checkCycle(d: MovementDiagram, ficha: string, mutate?: Mutate): Issue[]
         if (dist(a, b) > 6) bad(name, f, `salta ${dist(a, b).toFixed(1)} px entre fotogramas`)
       }
     }
-    prev = { f, q, knee, elbow, sh, hip }
+    prev = { f, q, knee, elbow, sh, hip, trunk, abd }
   }
   return issues
 }
@@ -184,5 +204,24 @@ describe('anatomía del ciclo completo (120 fotogramas por ficha)', () => {
       return { ...q, elbow: [q.shoulder[0] + 2 * foot[0] - m[0], q.shoulder[1] + 2 * foot[1] - m[1]] }
     }
     expect(checkCycle(g.diagram, g.key, flip).some((i) => i.articulacion.startsWith('codo'))).toBe(true)
+  })
+
+  it('tronco y abducción: los extremos del rig coinciden con los datos de la ficha', () => {
+    const lumbar = GUIDES.find((x) => x.key === 'Extensión lumbar en máquina')!.diagram
+    expect(poseAt(lumbar, 0).trunkDeg).toBeCloseTo(lumbar.trunk!.from, 0)
+    expect(poseAt(lumbar, 1).trunkDeg).toBeCloseTo(lumbar.trunk!.to, 0)
+    const abd = GUIDES.find((x) => x.key === 'Abducción de cadera de pie en máquina')!.diagram
+    expect(poseAt(abd, 0).hipAbductionDeg).toBeCloseTo(abd.hipAbduction!.from, 0)
+    expect(poseAt(abd, 1).hipAbductionDeg).toBeCloseTo(abd.hipAbduction!.to, 0)
+    expect(poseAt(abd, 1).joints.knee.deg, 'rodilla casi extendida').toBeLessThan(8)
+  })
+
+  it('detecta un tronco fuera de rango o un abducción excesiva (sensibilidad)', () => {
+    const lumbar = GUIDES.find((x) => x.key === 'Extensión lumbar en máquina')!
+    const t = checkCycle(lumbar.diagram, lumbar.key, (q) => ({ ...q, trunkDeg: (q.trunkDeg ?? 0) + 30 }))
+    expect(t.some((i) => i.articulacion === 'tronco')).toBe(true)
+    const abd = GUIDES.find((x) => x.key === 'Abducción de cadera de pie en máquina')!
+    const a = checkCycle(abd.diagram, abd.key, (q) => ({ ...q, hipAbductionDeg: (q.hipAbductionDeg ?? 0) + 20 }))
+    expect(a.some((i) => i.articulacion === 'abducción de cadera')).toBe(true)
   })
 })
