@@ -1,6 +1,5 @@
 import { alive, db, saveTo, type GymDB } from '../db/db'
-import type { Unit } from './units'
-import { fromKg, roundTo } from './units'
+import { roundTo } from './units'
 import type { SetLog, TemplateExercise } from './types'
 
 /** Ejercicios de una sesión en su orden (exerciseOrder; desempate por primer registro). Función pura. */
@@ -47,7 +46,8 @@ export async function reorderTemplateExercises(templateId: string, templateExerc
 }
 
 /** Añade una serie a un ejercicio de la sesión; si el ejercicio es nuevo en ella, queda el último (orden de alta). */
-export async function addSetToSession(sessionId: string, exerciseId: string, unit: Unit, d: GymDB = db) {
+/** La app trabaja solo en kg: el parámetro `_unit` se ignora (se conserva para no romper llamadas antiguas). */
+export async function addSetToSession(sessionId: string, exerciseId: string, _unit?: unknown, d: GymDB = db) {
   const logs = await d.setLogs.where('sessionId').equals(sessionId).filter(alive).toArray()
   const mine = logs.filter((l) => l.exerciseId === exerciseId).sort((a, b) => a.setIndex - b.setIndex)
   const last = mine[mine.length - 1]
@@ -55,7 +55,7 @@ export async function addSetToSession(sessionId: string, exerciseId: string, uni
   return saveTo(d, 'setLogs', {
     sessionId, exerciseId, setIndex: (last?.setIndex ?? -1) + 1,
     exerciseOrder: mine[0]?.exerciseOrder ?? nextExerciseOrder(logs),
-    reps: last?.reps ?? 10, weightKg, inputUnit: unit, inputWeight: roundTo(fromKg(weightKg, unit), 0.5),
+    reps: last?.reps ?? 10, weightKg, inputUnit: 'kg', inputWeight: roundTo(weightKg, 0.5),
     effort: null, completedAt: null,
   })
 }

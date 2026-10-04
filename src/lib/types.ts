@@ -1,5 +1,9 @@
 import type { BodyMeasurement, MeasurementSource } from './bodyMeasurement'
-import type { Unit } from './units'
+/**
+ * Unidad con la que se introdujo un peso. La app trabaja SOLO en kilogramos y escribe siempre 'kg'; 'lb' se conserva en el
+ * tipo porque pueden existir datos y clientes antiguos que la usaron (el peso real siempre está en weightKg).
+ */
+export type WeightUnit = 'kg' | 'lb'
 
 export type Effort = 'easy_done' | 'hard_done' | 'failed_close' | 'failed'
 
@@ -62,7 +66,7 @@ export interface SetLog extends SyncFields {
   exerciseOrder: number
   reps: number
   weightKg: number
-  inputUnit: Unit
+  inputUnit: WeightUnit
   inputWeight: number
   effort: Effort | null
   completedAt: number | null
@@ -94,7 +98,7 @@ export interface BodyWeight extends SyncFields, Nullable<Omit<BodyMeasurement, '
 
 /** Preferencias del usuario sincronizadas: una sola fila con id 'prefs'. */
 export interface UserPrefsRow extends SyncFields {
-  unit: Unit
+  unit: WeightUnit
   incrementKg: number
   gymId: string | null
 }

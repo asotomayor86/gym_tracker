@@ -1,10 +1,10 @@
 import { liveQuery } from 'dexie'
 import { useSyncExternalStore } from 'react'
 import { saveTo, type GymDB } from '../db/db'
-import type { Unit } from './units'
 
 export interface Prefs {
-  unit: Unit
+  /** La app trabaja SOLO en kilogramos: siempre 'kg' (se conserva el campo por compatibilidad con clientes y datos antiguos). */
+  unit: 'kg'
   incrementKg: number
   /** Gimnasio habitual (catálogo global); null = ninguno (no se filtra). */
   gymId: string | null
@@ -16,14 +16,24 @@ let bound: GymDB | null = null
 const listeners = new Set<() => void>()
 let cache: Prefs | null = null
 
+/**
+ * Normaliza unas preferencias de cualquier origen (localStorage, sync, clientes antiguos): la unidad es SIEMPRE 'kg'
+ * (un 'lb' guardado o recibido se ignora; el incremento ya está en kg), el incremento debe ser positivo y gymId texto o null.
+ */
+export function normalizePrefs(raw: unknown): Prefs {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const inc = typeof r.incrementKg === 'number' && Number.isFinite(r.incrementKg) && r.incrementKg > 0 ? r.incrementKg : DEFAULTS.incrementKg
+  return { unit: 'kg', incrementKg: inc, gymId: typeof r.gymId === 'string' && r.gymId ? r.gymId : null }
+}
+
 function read(): Prefs {
   if (cache) return cache
   try {
-    cache = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    cache = normalizePrefs(JSON.parse(localStorage.getItem(KEY) ?? '{}'))
   } catch {
-    cache = DEFAULTS
+    cache = { ...DEFAULTS }
   }
-  return cache!
+  return cache
 }
 
 export const getPrefs = read
@@ -40,7 +50,7 @@ function persist() {
 }
 
 export function setPrefs(patch: Partial<Prefs>) {
-  cache = { ...read(), ...patch }
+  cache = normalizePrefs({ ...read(), ...patch }) // 'unit' nunca cambia: siempre kg
   persist()
   // Con la base enlazada, las preferencias también viajan por sync (tabla user_prefs, una fila 'prefs').
   if (bound) {
@@ -63,7 +73,7 @@ export function bindPrefsToDb(d: GymDB) {
   liveQuery(() => d.userPrefs.get(PREFS_ID)).subscribe({
     next: (row) => {
       if (!row || row.deletedAt) return
-      const next: Prefs = { unit: row.unit, incrementKg: row.incrementKg, gymId: row.gymId ?? null }
+      const next = normalizePrefs(row) // un 'lb' recibido de un cliente antiguo se ignora
       const cur = read()
       if (cur.unit === next.unit && cur.incrementKg === next.incrementKg && cur.gymId === next.gymId) return
       cache = next

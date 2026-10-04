@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { suggestNext } from './progression'
-import { kgToLb, lbToKg } from './units'
+import { roundTo } from './units'
 
 const s = (effort: any, weightKg = 50, reps = 10) => ({ effort, weightKg, reps })
 
@@ -14,6 +14,11 @@ describe('suggestNext', () => {
   it('fallo baja', () => expect(suggestNext([s('failed')])!.weightKg).toBeLessThan(50))
 })
 
-describe('units', () => {
-  it('ida y vuelta', () => expect(lbToKg(kgToLb(80))).toBeCloseTo(80))
+describe('roundTo', () => {
+  it('redondea al paso más cercano (0,5 por defecto)', () => {
+    expect(roundTo(52.3)).toBe(52.5)
+    expect(roundTo(52.2)).toBe(52)
+    expect(roundTo(52.3, 2.5)).toBe(52.5)
+    expect(roundTo(0)).toBe(0)
+  })
 })
