@@ -127,12 +127,6 @@ export function kneecap(cx: Ctx, knee: P, axis: P, off = 0, n?: P): void {
   block(cx, { a: add(c, mul(d, -5.4)), b: add(c, mul(d, 3.4)), wa: 4.7, wb: 3.2, c: 2.2, n: nrm(d), k: 0.3, sym: true })
 }
 
-/**
- * Estilo de la articulación trasera de codos y rodillas (vista de espalda): 'thin' = línea oscura muy fina,
- * 'none' = sin articulación. En desarrollo se puede forzar con ?bj=none.
- */
-export const STYLE: { backJoint: 'thin' | 'none' } = { backJoint: 'thin' }
-if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('bj') === 'none') STYLE.backJoint = 'none'
 
 /**
  * Mano en J para las vistas frontal y de espalda: el tallo es el dorso de la mano y el gancho, los dedos,
