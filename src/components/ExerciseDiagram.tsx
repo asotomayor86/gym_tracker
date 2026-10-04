@@ -184,6 +184,18 @@ export default function ExerciseDiagram({
         `<polygon points="${str([[tipX, y], [tipX - sd * 6, y - 3.5], [tipX - sd * 6, y + 3.5]])}" stroke-width=".6" stroke-linejoin="round" style="fill:var(--signal);stroke:var(--ink)"/></g>`)
       sc.front.push(sq([FRONT_CX + sd * frontal.kx, kneeY], 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
     }
+  } else if (frontal?.kind === 'abd') {
+    // abducción de cadera de pie: pierna de apoyo vertical, la otra se separa con la rodilla casi extendida
+    const L = frontLayout(false)
+    sc = buildFront({ ...common, hy: L.hy, abduct: frontal.deg, arms: armsAt(0.22, 0.16) })
+    sc.back.push(bits.shadow(FRONT_CX, FLOOR + 1, 46, uid))
+    for (const sd of [-1, 1]) sc.back.push(bits.line([FRONT_CX + sd * 46, L.hy - 12], [FRONT_CX + sd * 46, FLOOR], 5), bits.line([FRONT_CX + sd * 46, L.hy + 1], [FRONT_CX + sd * 29, L.hy + 1], 4))
+    const ar = (frontal.deg * Math.PI) / 180, dir: P = [Math.sin(ar), Math.cos(ar)], out: P = [Math.cos(ar), -Math.sin(ar)]
+    const hipR: P = [FRONT_CX + 8.6, L.hy]
+    sc.front.push(bits.line(add(add(hipR, [dir[0] * 12, dir[1] * 12]), [out[0] * 9, out[1] * 9]), add(add(hipR, [dir[0] * 30, dir[1] * 30]), [out[0] * 9, out[1] * 9]), 7))
+    sc.back.push(arrowSvg(concentric || !phases ? 1 : 0.35))
+    sc.back.push(sq(A, 3.5, 'fill:var(--surface);stroke:var(--signal)', 'stroke-width="1.5"'))
+    sc.front.push(sq(cur, 4.5, markStyle, `stroke-width="1.5" ${markDash}`))
   } else if (frontal?.kind === 'arms') {
     const seatedArms = d.pose.startsWith('sentado')
     const L = frontLayout(seatedArms)

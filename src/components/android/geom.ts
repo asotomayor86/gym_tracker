@@ -1,6 +1,6 @@
 /** Geometría 2D del androide: puntos, cinemática de 2 huesos y pose del rig en un progreso p. */
 import type { MovementDiagram } from '../../lib/guideTypes'
-import { basePose, CANVAS, REACH, SEG, SPECIAL, toPx } from '../../lib/rigSpec'
+import { basePose, CANVAS, REACH, SEG, SPECIAL, standingHipY, toPx } from '../../lib/rigSpec'
 
 export type P = [number, number]
 export type Prof = [t: number, w: number][]
@@ -132,6 +132,7 @@ export interface JointReading { deg: number; sense: 'flexion' | 'extension' | 'n
 export type Frontal =
   | { kind: 'legs'; kx: number; opening: boolean }
   | { kind: 'arms'; theta: number; th2: number; lift: boolean; closing: boolean; pull: boolean }
+  | { kind: 'abd'; deg: number }
   | null
 export interface RigPose {
   s: Skel
@@ -159,6 +160,10 @@ export interface RigPose {
   plantarDeg: number
   frontalElbowDeg?: number
   /** Ángulos articulares del lado visible (vista lateral). En vistas frontales solo el codo tiene valor (sin signo). */
+  /** Inclinación del tronco respecto a la vertical (+ = hacia delante) en la extensión lumbar; undefined en el resto. */
+  trunkDeg?: number
+  /** Separación lateral de la pierna que trabaja (0 = juntas) en la abducción de cadera de pie; undefined en el resto. */
+  hipAbductionDeg?: number
   joints: Record<JointName, JointReading>
 }
 
@@ -188,7 +193,23 @@ export function poseAt(d: MovementDiagram, p: number): RigPose {
   let cur: P = V ? (p < 0.5 ? mix(A, V, p * 2) : mix(V, B, (p - 0.5) * 2)) : mix(A, B, p)
   const leg = d.limb === 'pierna'
   let armTarget: P | null = null
+  // Extensión lumbar: la cadera queda fija y el tronco pivota sobre ella; los brazos van cruzados sobre el pecho.
+  const trunk = d.limb === 'tronco' && d.trunk ? d.trunk : null
+  const trunkAt = (q: number) => (trunk ? trunk.from + (trunk.to - trunk.from) * q : 0)
+  const shoulderAt = (q: number): P => {
+    const t = (trunkAt(q) * Math.PI) / 180
+    return [base.hip[0] + Math.sin(t) * SEG.torso, base.hip[1] - Math.cos(t) * SEG.torso]
+  }
   let armPick = d.elbow === 'arriba' ? higher : lower
+  if (trunk) {
+    const t = (trunkAt(p) * Math.PI) / 180
+    const up: P = [Math.sin(t), -Math.cos(t)], front: P = [Math.cos(t), Math.sin(t)]
+    const sh = shoulderAt(p)
+    s = { ...base, shoulder: sh, up }
+    A = shoulderAt(0); B = shoulderAt(1); V = null; cur = sh
+    armTarget = add(sh, [-up[0] * 9 + front[0] * 7, -up[1] * 9 + front[1] * 7])
+    armPick = (a, b) => ((a[0] - sh[0]) * front[0] + (a[1] - sh[1]) * front[1] < (b[0] - sh[0]) * front[0] + (b[1] - sh[1]) * front[1] ? a : b)
+  }
   if (d.pose === 'colgado') {
     const pull = d.motion === 'tiron'
     const H: P = pull ? [B[0], Math.min(A[1], B[1])] : [A[0], Math.max(A[1], B[1])]
@@ -269,16 +290,28 @@ export function poseAt(d: MovementDiagram, p: number): RigPose {
   const frontalLegs = leg && (d.pose === 'sentado' || d.pose === 'sentado-reclinado') && Math.abs(B[1] - A[1]) < 2 && Math.abs(B[0] - A[0]) > 3
   const opening = B[0] > A[0]
   const kx = (opening ? 22 : 46) + ((opening ? 46 : 22) - (opening ? 22 : 46)) * p
-  const frontal: Frontal = frontalLegs ? { kind: 'legs', kx, opening } : armsFront ? { kind: 'arms', theta, th2, lift, closing, pull: pullF } : null
+  const abd = d.hipAbduction && d.view === 'frontal' && d.pose === 'de-pie' ? d.hipAbduction : null
+  const abdDeg = abd ? abd.from + (abd.to - abd.from) * p : 0
+  if (abd) {
+    // marcas: tobillo de la pierna que trabaja (vista frontal, pierna derecha del dibujo)
+    const hipP: P = [110 + 8.6, standingHipY()]
+    const ankleAt = (deg: number): P => {
+      const a = (deg * Math.PI) / 180, k = add(hipP, [Math.sin(a) * SEG.thigh, Math.cos(a) * SEG.thigh]), a2 = a - 0.07
+      return add(k, [Math.sin(a2) * (SEG.shin - 0.4), Math.cos(a2) * (SEG.shin - 0.4)])
+    }
+    A = ankleAt(abd.from); B = ankleAt(abd.to); V = null; cur = ankleAt(abdDeg)
+  }
+  const frontal: Frontal = abd ? { kind: 'abd', deg: abdDeg } : frontalLegs ? { kind: 'legs', kx, opening } : armsFront ? { kind: 'arms', theta, th2, lift, closing, pull: pullF } : null
 
   // ángulos articulares (+ = sentido natural de flexión)
   const thighV = sub(s.knee, s.hip), shinV = sub(s.ankle, s.knee)
   const uarmV = sub(arm.mid, s.shoulder), farmV = sub(arm.end, arm.mid)
-  const torsoDown = sub(s.hip, s.shoulder)
+  const torsoDown: P = sub(s.hip, s.shoulder)
+  const pelvisDown: P = trunk ? [0, 1] : torsoDown // en la extensión lumbar la pelvis queda fija y vertical
   const fv = !!frontal
   const knee = fv ? 0 : signedAngle(thighV, shinV)
   const elbow = fv ? Math.abs(signedAngle(uarmV, farmV)) : -signedAngle(uarmV, farmV)
-  const hipA = fv ? 0 : -signedAngle(torsoDown, thighV)
+  const hipA = abd ? abdDeg : fv ? 0 : -signedAngle(pelvisDown, thighV)
   const shoulderA = fv ? 0 : -signedAngle(torsoDown, uarmV)
   const ankleA = calf ? SPECIAL.calf.maxPlantarflexionDeg * p : 0
   return {
@@ -288,6 +321,7 @@ export function poseAt(d: MovementDiagram, p: number): RigPose {
     vertical: Math.abs(B[1] - A[1]) > Math.abs(B[0] - A[0]),
     frontal, armsFront,
     plane: frontal ? 'frontal' : 'lateral', shoulder: s.shoulder, elbow: arm.mid, wrist: arm.end, hip: s.hip, knee: s.knee, ankle: s.ankle, torsoUp: s.up,
+    trunkDeg: trunk ? trunkAt(p) : undefined, hipAbductionDeg: abd ? abdDeg : undefined,
     headTop: s.shoulder[1] + s.up[1] * (SEG.neckVisible + SEG.head), target: armTarget, plantarDeg: ankleA,
     frontalElbowDeg: fv ? Math.abs(signedAngle(uarmV, farmV)) : undefined,
     joints: { knee: reading(knee), elbow: reading(elbow), hip: reading(hipA), shoulder: reading(shoulderA), ankle: reading(ankleA) },

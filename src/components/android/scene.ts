@@ -114,6 +114,8 @@ export interface FrontIn {
   hy: number
   /** separación de la rodilla respecto al eje (sentado/abducción) o undefined = de pie con piernas rectas */
   kneeX?: number
+  /** Abducción de cadera de pie: separación (°) de la pierna derecha del dibujo; la otra queda de apoyo. */
+  abduct?: number
   arms: (sy: number) => FrontArm[]
   cx?: number
 }
@@ -153,13 +155,16 @@ export function buildFront(o: FrontIn): Scene {
   for (const sd of [-1, 1] as const) {
     const hip = P(sd * 8.6, SEG.torso)
     const seated = o.kneeX !== undefined
-    const knee: P = seated ? [mx + sd * o.kneeX!, o.hy + 3] : P(sd * 10.8, SEG.torso + SEG.thigh)
-    const ank: P = seated ? [mx + sd * (o.kneeX! + 2), CANVAS.floor - SEG.ankleHeight] : [mx + sd * 11.2, CANVAS.floor - SEG.ankleHeight]
+    const lifting = o.abduct !== undefined && sd === 1
+    const aR = lifting ? (o.abduct! * Math.PI) / 180 : 0
+    const knee: P = seated ? [mx + sd * o.kneeX!, o.hy + 3] : lifting ? add(hip, [Math.sin(aR) * SEG.thigh, Math.cos(aR) * SEG.thigh]) : P(sd * 10.8, SEG.torso + SEG.thigh)
+    const ank: P = seated ? [mx + sd * (o.kneeX! + 2), CANVAS.floor - SEG.ankleHeight]
+      : lifting ? add(knee, [Math.sin(aR - 0.07) * (SEG.shin - 0.4), Math.cos(aR - 0.07) * (SEG.shin - 0.4)]) : [mx + sd * 11.2, CANVAS.floor - SEG.ankleHeight]
     const nT = nrm(unit(sub(knee, hip))), nS = nrm(unit(sub(ank, knee)))
     const outerT = nT[0] * sd > 0, outerS = nS[0] * sd > 0
     const zt = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerT ? [outer, centre, inner] : [inner, centre, outer])
     const zs = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerS ? [outer, centre, inner] : [inner, centre, outer])
-    const fx = ank[0] + sd * 0.9, fy = ank[1]
+    const fx = ank[0] + sd * 0.9, fy = ank[1] + SEG.ankleHeight // la suela queda a 6 px bajo el eje del tobillo
     block(cx, { a: knee, b: ank, wa: 6.6, wb: 4.2, n: nS, sym: true, c: 2, zones: back ? zs(zn(L, ['gastroc']), zn(L, ['soleus']), zn(L, ['gastrocM'])) : zs(zn(L, ['tib']), zn(L, ['tib']), null) })
     // pie de 12 px de alto, nunca más ancho que la pantorrilla (±6,6)
     block(cx, { a: [ank[0], fy - 12], b: [fx, fy - 1], wa: 4.6, wb: 5.8, c: 2.4, n: N, sym: true, k: 0.34 })
