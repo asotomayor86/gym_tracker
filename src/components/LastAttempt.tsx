@@ -6,7 +6,7 @@ import { alive, db } from '../db/db'
 import { exerciseAttempts, type AttemptSuggestion, type EffortSummary } from '../lib/attempts'
 import { usePrefs } from '../lib/prefs'
 import { EFFORT_LABELS, type Effort } from '../lib/types'
-import { formatWeight, fromKg, roundTo } from '../lib/units'
+import { fmtKg, roundHalf } from './weight/weightFormat'
 
 const EFFORTS: Effort[] = ['easy_done', 'hard_done', 'failed_close', 'failed']
 /** Icono + color por esfuerzo (igual que en la sesión): la información no depende solo del color. */
@@ -56,7 +56,7 @@ export function LastAttemptButton({ exerciseId, exerciseName, exerciseNameEn, ex
 function AttemptSheet({ exerciseId, exerciseName, exerciseNameEn, excludeSessionId, onApply, onClose }: {
   exerciseId: string; exerciseName: string; exerciseNameEn?: string; excludeSessionId?: string; onApply?: (v: ApplyValues) => Promise<number | void> | number | void; onClose: () => void
 }) {
-  const { unit, incrementKg } = usePrefs()
+  const { incrementKg } = usePrefs()
   const id = useId()
   const logs = useLiveQuery(() => db.setLogs.where('exerciseId').equals(exerciseId).filter(alive).toArray(), [exerciseId])
   const sessions = useLiveQuery(() => db.sessions.toArray(), [])
@@ -70,7 +70,7 @@ function AttemptSheet({ exerciseId, exerciseName, exerciseNameEn, excludeSession
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const w = (kg: number) => formatWeight(kg, unit)
+  const w = fmtKg
   const apply = async () => {
     if (!a?.suggestion || !onApply || busy) return
     setBusy(true)
@@ -139,7 +139,7 @@ function AttemptSheet({ exerciseId, exerciseName, exerciseNameEn, excludeSession
               </div>
             )}
 
-            {a.history.length > 1 && <Trend history={a.history} unit={unit} />}
+            {a.history.length > 1 && <Trend history={a.history} />}
           </>
         )}
         <Button variant="ghost" className="w-full" onClick={onClose}>Cerrar</Button>
@@ -161,9 +161,9 @@ function EffortLine({ s }: { s: EffortSummary }) {
 }
 
 /** Mejor peso por intento, del más antiguo al más reciente. */
-function Trend({ history, unit }: { history: { date: number; topWeightKg: number; bestReps: number }[]; unit: 'kg' | 'lb' }) {
+function Trend({ history }: { history: { date: number; topWeightKg: number; bestReps: number }[] }) {
   const items = [...history].reverse()
-  const vals = items.map((h) => roundTo(fromKg(h.topWeightKg, unit), 0.5))
+  const vals = items.map((h) => roundHalf(h.topWeightKg))
   const max = Math.max(...vals, 1)
   return (
     <div>

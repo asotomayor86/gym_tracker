@@ -9,8 +9,7 @@ import { DragHandle, MoveButtons, SortableItem, SortableList } from '../componen
 import { Button, CommitInput, NameEn, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { reorderTemplateExercises } from '../lib/order'
-import { usePrefs } from '../lib/prefs'
-import { fromKg, roundTo, toKg } from '../lib/units'
+import { roundHalf } from '../components/weight/weightFormat'
 
 const num = (v: string, fallback: number) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback)
 
@@ -18,7 +17,6 @@ export default function TemplateEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const justCreated = !!(useLocation().state as { created?: boolean } | null)?.created
-  const { unit } = usePrefs()
   const template = useLiveQuery(() => db.workoutTemplates.get(id!), [id])
   const rows = useLiveQuery(
     () => db.templateExercises.where('templateId').equals(id!).filter(alive).sortBy('position'),
@@ -91,23 +89,25 @@ export default function TemplateEditPage() {
           <SortableItem key={r.id} id={r.id}>
           {({ handle }) => (
           <div className="glass mb-5 space-y-3 p-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
               <DragHandle handle={handle} label={name} />
               <span className="num text-xs text-signal-text">{String(i + 1).padStart(2, '0')}</span>
-              <div className="min-w-0 flex-1">
-                <div className="display text-base leading-snug">{name}</div>
+              <div className="min-w-0 flex-1 basis-40">
+                <div className="display text-base leading-snug [overflow-wrap:anywhere]">{name}</div>
                 <NameEn className="text-sm">{ex?.nameEn}</NameEn>
                 {gym && ex && avail(ex.id) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(ex.id)} gymName={gym.name} /></div>}
               </div>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
               {ex && <LastAttemptButton iconOnly exerciseId={ex.id} exerciseName={name} exerciseNameEn={ex.nameEn} onApply={async (v) => { await update({ targetWeightKg: v.weightKg, targetReps: v.reps }); return 1 }} />}
               <MoveButtons label={name} first={i === 0} last={i === shown.length - 1} onMove={(dir) => move(i, dir)} />
               <Button variant="danger" className="!min-h-9 px-3" aria-label={`Quitar ${name}`} onClick={() => remove('templateExercises', r.id)}>✕</Button>
+              </div>
             </div>
             <div className="eyebrow grid grid-cols-4 gap-3 [&_input]:num [&_input]:mt-1 [&_input]:text-center [&_input]:text-lg [&_input]:normal-case [&_input]:tracking-normal [&_input]:text-ink">
-              <label>Series<CommitInput type="number" inputMode="numeric" value={r.targetSets} onCommit={(v) => update({ targetSets: Math.max(1, Math.round(num(v, r.targetSets))) })} /></label>
+              <label><span className="whitespace-nowrap">Series</span><CommitInput type="number" inputMode="numeric" value={r.targetSets} onCommit={(v) => update({ targetSets: Math.max(1, Math.round(num(v, r.targetSets))) })} /></label>
               <label>Reps<CommitInput type="number" inputMode="numeric" value={r.targetReps} onCommit={(v) => update({ targetReps: Math.max(1, Math.round(num(v, r.targetReps))) })} /></label>
-              <label>Peso ({unit})<CommitInput type="number" inputMode="decimal" value={roundTo(fromKg(r.targetWeightKg, unit), 0.5)} onCommit={(v) => update({ targetWeightKg: toKg(num(v, 0), unit) })} /></label>
-              <label>Desc. (s)<CommitInput type="number" inputMode="numeric" value={r.restS} onCommit={(v) => update({ restS: Math.max(0, Math.round(num(v, r.restS))) })} /></label>
+              <label>KG<CommitInput type="number" inputMode="decimal" value={roundHalf(r.targetWeightKg)} onCommit={(v) => update({ targetWeightKg: Math.max(0, num(v, 0)) })} /></label>
+              <label title="Descanso en segundos"><span className="whitespace-nowrap">Desc.</span><CommitInput aria-label="Descanso en segundos" type="number" inputMode="numeric" value={r.restS} onCommit={(v) => update({ restS: Math.max(0, Math.round(num(v, r.restS))) })} /></label>
             </div>
           </div>
           )}

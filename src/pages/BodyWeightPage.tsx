@@ -6,12 +6,9 @@ import { fmtDayLong, fmtNum } from '../components/weight/weightFormat'
 import {
   WEIGHT_MAX_KG, WEIGHT_MIN_KG, isoDate, removeBodyWeight, setBodyWeight, useBodyWeights, weightTrend,
 } from '../components/weight/weightData'
-import { usePrefs } from '../lib/prefs'
-import { fromKg, toKg } from '../lib/units'
 
 /** Entrada de peso reutilizable (página y tarjeta de Hoy). */
 export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; date?: string; onSaved?: () => void }) {
-  const { unit } = usePrefs()
   const rows = useBodyWeights()
   const today = isoDate()
   const [day, setDay] = useState(date ?? today)
@@ -21,14 +18,14 @@ export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; dat
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const shown = text !== '' ? text : existing ? fromKg(existing.weightKg, unit).toFixed(1).replace(".", ",") : ''
-  const placeholder = lastKg ? fmtNum(fromKg(lastKg, unit)) : unit === 'kg' ? '75,0' : '165'
+  const shown = text !== '' ? text : existing ? existing.weightKg.toFixed(1).replace(".", ",") : ''
+  const placeholder = lastKg ? fmtNum(lastKg) : '75,0'
 
   const save = async () => {
     const v = parseFloat(shown.replace(',', '.'))
     if (!Number.isFinite(v)) return setError('Escribe tu peso, por ejemplo 75,4.')
-    const kg = Math.round(toKg(v, unit) * 10) / 10
-    if (kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG) return setError(`El peso debe estar entre ${Math.round(fromKg(WEIGHT_MIN_KG, unit))} y ${Math.round(fromKg(WEIGHT_MAX_KG, unit))} ${unit}.`)
+    const kg = Math.round(v * 10) / 10
+    if (kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG) return setError(`El peso debe estar entre ${WEIGHT_MIN_KG} y ${WEIGHT_MAX_KG} kg.`)
     setError('')
     try { await setBodyWeight(day, kg, (note || existing?.note || '').trim() || undefined) } catch { return setError('No se pudo guardar. Inténtalo de nuevo.') }
     setText(''); setNote(''); setSaved(true); setTimeout(() => setSaved(false), 2200)
@@ -39,7 +36,7 @@ export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; dat
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void save() }}>
       <div className="flex items-end gap-2">
         <label className="min-w-0 flex-1">
-          <span className="eyebrow">{compact ? 'Peso de hoy' : 'Peso'} ({unit})</span>
+          <span className="eyebrow">{compact ? 'Peso de hoy' : 'Peso'} (kg)</span>
           <input
             className={`${inputCls} num mt-1 text-center text-2xl`} inputMode="decimal" autoComplete="off" value={shown} placeholder={placeholder}
             onChange={(e) => { setText(e.target.value); setSaved(false) }} aria-invalid={!!error || undefined} aria-describedby="bw-err"
@@ -66,7 +63,6 @@ export function WeightEntry({ compact, date, onSaved }: { compact?: boolean; dat
 }
 
 export default function BodyWeightPage() {
-  const { unit } = usePrefs()
   const rows = useBodyWeights()
   const [editing, setEditing] = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
@@ -98,8 +94,8 @@ export default function BodyWeightPage() {
                     {r.note && <div className="truncate text-xs text-mute">{r.note}</div>}
                   </div>
                   <div className="text-right">
-                    <div className="num text-base">{fmtNum(fromKg(r.weightKg, unit))} <span className="text-xs text-mute">{unit}</span></div>
-                    {dk !== null && Math.abs(dk) >= 0.05 && <div className={`num text-xs ${dk > 0 ? 'text-signal-text' : 'text-cold'}`}>{dk > 0 ? '▲' : '▼'} {fmtNum(Math.abs(fromKg(dk, unit)))}</div>}
+                    <div className="num text-base">{fmtNum(r.weightKg)} <span className="text-xs text-mute">kg</span></div>
+                    {dk !== null && Math.abs(dk) >= 0.05 && <div className={`num text-xs ${dk > 0 ? 'text-signal-text' : 'text-cold'}`}>{dk > 0 ? '▲' : '▼'} {fmtNum(Math.abs(dk))}</div>}
                   </div>
                   <button type="button" onClick={() => { setEditing(r.date); window.scrollTo({ top: 0, behavior: 'smooth' }) }} aria-label={`Editar ${fmtDayLong(r.date)}`} className="press grid size-9 place-items-center rounded-lg border border-hair text-mute hover:text-ink">✎</button>
                   {confirmDel === r.date ? (
@@ -119,7 +115,6 @@ export default function BodyWeightPage() {
 
 /** Tarjeta de «Hoy»: peso del día (si ya está) o entrada rápida, con enlace a la evolución. */
 export function WeightCard() {
-  const { unit } = usePrefs()
   const rows = useBodyWeights()
   const [editing, setEditing] = useState(false)
   const todayRow = rows.find((r) => r.date === isoDate())
@@ -130,8 +125,8 @@ export function WeightCard() {
         <div className="flex items-center gap-4">
           <div className="min-w-0 flex-1">
             <div className="eyebrow">Peso de hoy</div>
-            <div className="num text-3xl leading-tight">{fmtNum(fromKg(todayRow.weightKg, unit))} <span className="text-base text-mute">{unit}</span></div>
-            {trend && <div className={`num text-xs ${trend.deltaKg > 0 ? 'text-signal-text' : 'text-cold'}`}>{trend.deltaKg > 0 ? '▲' : '▼'} {fmtNum(Math.abs(fromKg(trend.deltaKg, unit)))} {unit} en 30 d</div>}
+            <div className="num text-3xl leading-tight">{fmtNum(todayRow.weightKg)} <span className="text-base text-mute">kg</span></div>
+            {trend && <div className={`num text-xs ${trend.deltaKg > 0 ? 'text-signal-text' : 'text-cold'}`}>{trend.deltaKg > 0 ? '▲' : '▼'} {fmtNum(Math.abs(trend.deltaKg))} kg en 30 d</div>}
           </div>
           <Button variant="ghost" onClick={() => setEditing(true)}>Cambiar</Button>
         </div>

@@ -14,11 +14,11 @@ import { alive, db, remove, save } from '../db/db'
 import { unlockAudio } from '../lib/restAudio'
 import { addSetToSession, reorderSessionExercises, sessionExerciseIds } from '../lib/order'
 import { fmtDate } from '../lib/labels'
-import { setPrefs, usePrefs } from '../lib/prefs'
+import { fmtKg, roundHalf } from '../components/weight/weightFormat'
+import { usePrefs } from '../lib/prefs'
 import { suggestNext } from '../lib/progression'
 import { isDone, lastSessionSets } from '../lib/stats'
 import { EFFORT_LABELS, type Effort, type SetLog } from '../lib/types'
-import { formatWeight, fromKg, roundTo, toKg } from '../lib/units'
 
 /** Icono por esfuerzo: la información no depende solo del color (daltonismo). */
 const EFFORT_ICON: Record<Effort, string> = { easy_done: '✓', hard_done: '●', failed_close: '▲', failed: '✕' }
@@ -35,7 +35,7 @@ const EFFORTS = Object.keys(EFFORT_LABELS) as Effort[]
 export default function SessionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { unit, incrementKg } = usePrefs()
+  const { incrementKg } = usePrefs()
   const [rest, setRest] = useState<Rest | null>(null)
   const [localOrder, setLocalOrder] = useState<string[] | null>(null)
   const { gym, avail } = useGymContext()
@@ -83,11 +83,11 @@ export default function SessionPage() {
   /** Rellena peso y repeticiones sugeridos en las series aún sin completar de un ejercicio. */
   const applySuggestion = async (eid: string, v: { weightKg: number; reps: number }) => {
     const pending = logs.filter((l) => l.exerciseId === eid && !isDone(l))
-    for (const l of pending) await patchLog(l, { weightKg: v.weightKg, reps: v.reps, inputUnit: unit, inputWeight: roundTo(fromKg(v.weightKg, unit), 0.5) })
+    for (const l of pending) await patchLog(l, { weightKg: v.weightKg, reps: v.reps, inputUnit: 'kg', inputWeight: roundHalf(v.weightKg) })
     return pending.length
   }
 
-  const addSet = (eid: string) => addSetToSession(session.id, eid, unit)
+  const addSet = (eid: string) => addSetToSession(session.id, eid, 'kg')
 
   const finish = async () => {
     for (const l of logs) if (!isDone(l)) await remove('setLogs', l.id)
@@ -106,15 +106,6 @@ export default function SessionPage() {
     <Page
       title="Sesión"
       eyebrow={`${fmtDate(session.startedAt)}${finished ? ' · cerrada' : ' · en curso'}`}
-      actions={
-        <div className="glass flex rounded-full p-1">
-          {(['kg', 'lb'] as const).map((u) => (
-            <button key={u} onClick={() => setPrefs({ unit: u })} className={`rounded-full px-3.5 min-h-9 text-sm font-semibold transition-colors ${unit === u ? 'bg-signal text-on-signal' : 'text-mute'}`}>
-              {u}
-            </button>
-          ))}
-        </div>
-      }
     >
       {rest && (
         <RestTimer
@@ -135,8 +126,8 @@ export default function SessionPage() {
             <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
               {!finished && <DragHandle handle={handle} label={exName(eid)} />}
               <span className="num text-xs text-signal-text">{String(gi + 1).padStart(2, '0')}</span>
-              <div className="min-w-0 flex-1">
-                <h2 className="display text-xl leading-snug">{exName(eid)}</h2>
+              <div className="min-w-0 flex-1 basis-40">
+                <h2 className="display text-xl leading-snug [overflow-wrap:anywhere]">{exName(eid)}</h2>
                 <NameEn className="mt-0.5 text-sm">{exEn(eid)}</NameEn>
                 {gym && avail(eid) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(eid)} gymName={gym.name} /></div>}
               </div>
@@ -147,7 +138,7 @@ export default function SessionPage() {
             {sug && (
               <div className="mb-2 rounded-xl bg-signal/10 px-3 py-2 text-xs">
                 <span className="text-mute">Sugerido </span>
-                <b className="text-signal-text">{formatWeight(sug.weightKg, unit)} × {sug.reps}</b>
+                <b className="text-signal-text">{fmtKg(sug.weightKg)} × {sug.reps}</b>
                 <span className="text-mute"> · {sug.reason}</span>
               </div>
             )}
@@ -156,13 +147,13 @@ export default function SessionPage() {
                 <div className="flex items-end gap-3">
                   <span className="num w-6 pb-2.5 text-xs text-mute">{String(i + 1).padStart(2, '0')}</span>
                   <label className="flex-1">
-                    <span className="eyebrow">{unit}</span>
+                    <span className="eyebrow">kg</span>
                     <CommitInput
                       type="number" inputMode="decimal" aria-label="Peso" className={`${inputCls} num text-center text-2xl`}
-                      value={roundTo(fromKg(l.weightKg, unit), 0.5)}
+                      value={roundHalf(l.weightKg)}
                       onCommit={(v) => {
                         const w = parseFloat(v)
-                        if (Number.isFinite(w) && w >= 0) patchLog(l, { weightKg: toKg(w, unit), inputUnit: unit, inputWeight: w })
+                        if (Number.isFinite(w) && w >= 0) patchLog(l, { weightKg: w, inputUnit: 'kg', inputWeight: w })
                       }}
                     />
                   </label>

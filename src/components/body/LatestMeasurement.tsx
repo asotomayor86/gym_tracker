@@ -1,11 +1,9 @@
-import { usePrefs } from '../../lib/prefs'
 import { fmtDayLong, fmtNum } from '../weight/weightFormat'
 import { useMeasurements } from './bodyShim'
-import { METRICS, displayUnit, toDisplay } from './metrics'
+import { METRICS } from './metrics'
 
 /** Resumen de la última medición de la báscula: los indicadores principales destacados y el resto en una rejilla. */
 export function LatestMeasurement() {
-  const { unit } = usePrefs()
   const rows = useMeasurements()
   // la última medición CON composición (un día con solo el peso manual no sirve de resumen)
   const m = [...rows].reverse().find((r) => METRICS.some((d) => d.key !== 'weightKg' && typeof r[d.key] === 'number'))
@@ -16,8 +14,8 @@ export function LatestMeasurement() {
       <div key={def.key} className={`rounded-2xl border border-hair px-3 py-2.5 ${big ? 'bg-signal/10' : 'bg-ink/5'}`}>
         <div className="eyebrow !text-[0.6rem]">{def.short}</div>
         <div className={`num mt-0.5 font-semibold ${big ? 'text-xl text-signal-text' : 'text-base'}`}>
-          {typeof v === 'number' ? fmtNum(toDisplay(def, v, unit), def.decimals) : '—'}
-          <span className="ml-1 text-[0.68rem] font-normal text-mute">{displayUnit(def, unit)}</span>
+          {typeof v === 'number' ? fmtNum(v, def.decimals) : '—'}
+          <span className="ml-1 text-[0.68rem] font-normal text-mute">{def.unit}</span>
         </div>
       </div>
     )

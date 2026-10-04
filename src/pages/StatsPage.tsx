@@ -4,12 +4,10 @@ import { WeightEvolution } from '../components/weight/WeightEvolution'
 import { HeatBar, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
-import { usePrefs } from '../lib/prefs'
 import { exerciseHistory, muscleStats } from '../lib/stats'
-import { fromKg, roundTo } from '../lib/units'
+import { roundHalf } from '../components/weight/weightFormat'
 
 export default function StatsPage() {
-  const { unit } = usePrefs()
   const logs = useLiveQuery(() => db.setLogs.filter(alive).toArray())
   const exercises = useLiveQuery(() => db.exercises.filter(alive).toArray())
   const [exerciseId, setExerciseId] = useState('')
@@ -52,7 +50,7 @@ export default function StatsPage() {
             <select className={`${inputCls} font-semibold`} value={selected} onChange={(e) => setExerciseId(e.target.value)}>
               {trained.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
-            <LineChart values={history.map((h) => roundTo(fromKg(h.e1rm, unit), 0.5))} unit={unit} />
+            <LineChart values={history.map((h) => roundHalf(h.e1rm))} unit="kg" />
             <p className="eyebrow">1RM estimado (Epley) por sesión · {history.length} sesiones</p>
           </>
         )}

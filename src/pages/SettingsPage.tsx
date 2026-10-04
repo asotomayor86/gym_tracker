@@ -60,13 +60,6 @@ export default function SettingsPage() {
       <section className="glass space-y-4 p-5">
         <SectionTitle>Preferencias</SectionTitle>
         <label className="eyebrow block">
-          Unidad de peso
-          <select className={`${inputCls} mt-1 text-base normal-case tracking-normal text-ink`} value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as 'kg' | 'lb' })}>
-            <option value="kg">Kilos (kg)</option>
-            <option value="lb">Libras (lb)</option>
-          </select>
-        </label>
-        <label className="eyebrow block">
           Gimnasio habitual
           <select className={`${inputCls} mt-1 text-base normal-case tracking-normal text-ink`} value={prefs.gymId ?? ''} onChange={(e) => setPrefs({ gymId: e.target.value || null })}>
             <option value="">Sin filtro (todos los ejercicios)</option>

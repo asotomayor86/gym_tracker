@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { METRIC_BY_KEY, METRICS, displayUnit, toDisplay, type MetricKey } from '../body/metrics'
+import { METRIC_BY_KEY, METRICS, type MetricKey } from '../body/metrics'
 import MetricChart from '../body/MetricChart'
 import { availableMetrics, useMeasurements, useMetricSeries } from '../body/bodyShim'
 import { LatestMeasurement } from '../body/LatestMeasurement'
 import { EmptyState } from '../ui'
 import { fmtNum } from './weightFormat'
 import { addDays, isoDate, movingAverage, useBodyWeights, weightTrend } from './weightData'
-import { usePrefs } from '../../lib/prefs'
 
 const RANGES = [{ k: '30', label: '30 d', days: 30 }, { k: '90', label: '90 d', days: 90 }, { k: '365', label: '1 año', days: 365 }, { k: 'all', label: 'Todo', days: 0 }] as const
 
@@ -46,7 +45,6 @@ function TrendBar({ deltaKg, unit }: { deltaKg: number; unit: string }) {
  * Compartido por /peso y Stats. Con `registerLink` añade el enlace a /peso.
  */
 export function WeightEvolution({ registerLink }: { registerLink?: boolean }) {
-  const { unit } = usePrefs()
   const weights = useBodyWeights()
   const [metric, setMetric] = useState<MetricKey>('weightKg')
   const [range, setRange] = useState<(typeof RANGES)[number]['k']>('90')
@@ -54,8 +52,8 @@ export function WeightEvolution({ registerLink }: { registerLink?: boolean }) {
   const avail = useMemo(() => availableMetrics(rowsAll), [rowsAll])
   const other = useMetricSeries(metric)
   const def = METRIC_BY_KEY[metric]
-  const dUnit = displayUnit(def, unit)
-  const series = useMemo(() => other.map((p) => ({ date: p.date, value: toDisplay(def, p.value, unit) })), [other, def, unit])
+  const dUnit = def.unit
+  const series = other
   const today = isoDate()
   const days = RANGES.find((r) => r.k === range)!.days
   const from = days ? addDays(today, -days) : series[0]?.date ?? today
@@ -93,7 +91,7 @@ export function WeightEvolution({ registerLink }: { registerLink?: boolean }) {
         {series.length === 0 ? (
           <p className="rounded-xl bg-ink/5 px-4 py-6 text-center text-sm text-mute">Aún no hay datos de «{def.label}». Importa una medición de la báscula para verlos.</p>
         ) : view.length >= 2 ? (
-          <MetricChart points={view} unit={dUnit} label={def.label} decimals={def.decimals} minSpan={def.unit === 'kg' && unit === 'lb' ? def.minSpan * 2.2 : def.minSpan} from={days ? from : view[0].date} to={today} />
+          <MetricChart points={view} unit={dUnit} label={def.label} decimals={def.decimals} minSpan={def.minSpan} from={days ? from : view[0].date} to={today} />
         ) : (
           <p className="rounded-xl bg-ink/5 px-4 py-6 text-center text-sm text-mute">Necesitas al menos dos medidas en este periodo para dibujar la curva.</p>
         )}
