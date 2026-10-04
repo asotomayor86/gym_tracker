@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
+import { ExercisePicker } from '../components/gym/ExercisePicker'
+import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
@@ -111,7 +112,7 @@ export default function TemplateEditPage() {
         )
       })}
       </SortableList>
-      <ExercisePicker exercises={exercises} placeholder="+ Añadir ejercicio…" onPick={addExercise} />
+      <ExercisePicker exercises={exercises} label="+ Añadir ejercicio" onPick={addExercise} />
     </Page>
   )
 }

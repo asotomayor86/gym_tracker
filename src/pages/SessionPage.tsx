@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CreateRoutineButton } from '../components/CreateRoutine'
 import { GuideToggle } from '../components/ExerciseGuideView'
-import { AvailabilityChip, ExercisePicker } from '../components/gym/GymUI'
+import { ExercisePicker } from '../components/gym/ExercisePicker'
+import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
 import { Button, CommitInput, Page, inputCls } from '../components/ui'
@@ -179,7 +180,7 @@ export default function SessionPage() {
       })}
       </SortableList>
 
-      <ExercisePicker exercises={exercises} placeholder="+ Añadir ejercicio a la sesión…" onPick={(id) => void addSet(id)} />
+      <ExercisePicker exercises={exercises} label="+ Añadir ejercicio" onPick={(id) => void addSet(id)} />
 
       <div className="flex gap-2">
         {!finished && <Button className="flex-1" onClick={finish}>Terminar sesión</Button>}
