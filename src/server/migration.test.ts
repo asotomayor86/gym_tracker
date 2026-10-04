@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import type { PGlite } from '@electric-sql/pglite'
 import { describe, expect, it, vi } from 'vitest'
 import { ensureAdmin } from '../../api/_lib/bootstrap'
-import { type Conn, type Q, type Row, pgArray, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runCatalogRefresh, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
+import { type Conn, type Q, type Row, pgArray, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runBodyComposition, runCatalogRefresh, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
 import { buildSeedRows } from '../lib/seed'
 import { makeTestDb } from './testServer'
 
@@ -218,6 +218,7 @@ describe('migración multiusuario (esquema anterior → claves compuestas)', () 
     await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false })
     await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false })
     await runCatalogRefresh(conn, { dryRun: false })
+    await runBodyComposition(conn, { dryRun: false })
     const fresh = (await makeTestDb()).pglite
     const shape = async (db: PGlite) => {
       const cols = await q<{ t: string; c: string; ty: string; nn: string; d: string | null }>(

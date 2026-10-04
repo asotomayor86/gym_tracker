@@ -532,3 +532,61 @@ export async function runCatalogRefreshDown(conn: Conn): Promise<void> {
     await q(`ALTER TABLE exercises DROP COLUMN IF EXISTS name_en`)
   })
 }
+
+// ───────────── Etapa 5: composición corporal en body_weights (aditiva) ─────────────
+
+/** Columnas nuevas de body_weights (todas nullables). */
+export const BODY_COMPOSITION_COLUMNS: readonly [name: string, type: string][] = [
+  ['measured_at', 'text'], ['source', 'text'], ['bmi', 'real'], ['body_fat_pct', 'real'], ['muscle_pct', 'real'],
+  ['lean_mass_kg', 'real'], ['subcutaneous_fat_pct', 'real'], ['visceral_fat', 'real'], ['body_water_pct', 'real'],
+  ['skeletal_muscle_pct', 'real'], ['muscle_mass_kg', 'real'], ['bone_mass_kg', 'real'], ['protein_pct', 'real'],
+  ['bmr', 'real'], ['body_age', 'real'],
+]
+
+export interface BodyCompositionReport {
+  stage: 'body-composition'
+  /** Columnas que se añadirían/añadidas (las que no existían). */
+  addedColumns: string[]
+  alreadyPresent: number
+  /** Filas de body_weights (no se modifican: las columnas nuevas quedan en NULL). */
+  bodyWeightRows: number
+}
+
+/**
+ * Etapa 5 (aditiva e idempotente; `dryRun` hace ROLLBACK). Añade a `body_weights` las columnas de composición corporal
+ * con ADD COLUMN IF NOT EXISTS. No toca ninguna fila: las existentes quedan con NULL y los clientes antiguos, que no
+ * envían estas columnas, no las pisan (el servidor solo escribe las columnas presentes en cada subida).
+ */
+export async function runBodyComposition(conn: Conn, opts: { dryRun: boolean }): Promise<BodyCompositionReport> {
+  class DryRun extends Error {}
+  let report!: BodyCompositionReport
+  try {
+    await conn.transaction(async (q) => {
+      if (!(await q(`SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'body_weights'`)).length) {
+        throw new Error('No existe la tabla body_weights: aplica antes la etapa `schema`.')
+      }
+      const have = new Set((await q(`SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'body_weights'`)).map((r) => r.column_name as string))
+      const added: string[] = []
+      for (const [name, type] of BODY_COMPOSITION_COLUMNS) {
+        if (have.has(name)) continue
+        await q(`ALTER TABLE body_weights ADD COLUMN IF NOT EXISTS ${name} ${type}`)
+        added.push(name)
+      }
+      report = {
+        stage: 'body-composition', addedColumns: added, alreadyPresent: BODY_COMPOSITION_COLUMNS.length - added.length,
+        bodyWeightRows: Number(((await q(`SELECT count(*) c FROM body_weights`))[0] as { c: unknown }).c),
+      }
+      if (opts.dryRun) throw new DryRun()
+    })
+  } catch (e) {
+    if (!(e instanceof DryRun)) throw e
+  }
+  return report
+}
+
+/** Revierte la etapa 5: elimina las columnas (se pierde la composición corporal importada; el peso y la nota se conservan). */
+export async function runBodyCompositionDown(conn: Conn): Promise<void> {
+  await conn.transaction(async (q) => {
+    for (const [name] of BODY_COMPOSITION_COLUMNS) await q(`ALTER TABLE body_weights DROP COLUMN IF EXISTS ${name}`)
+  })
+}

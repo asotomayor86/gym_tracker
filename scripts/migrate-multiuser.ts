@@ -12,6 +12,9 @@
  *   npx tsx scripts/migrate-multiuser.ts catalog-refresh        informe en seco: nombres en inglés + ejercicios/gimnasios/disponibilidad nuevos del semilla
  *   npx tsx scripts/migrate-multiuser.ts catalog-refresh --apply  etapa 4 (aditiva e idempotente)
  *   npx tsx scripts/migrate-multiuser.ts down-catalog-refresh --apply  quita la columna name_en
+ *   npx tsx scripts/migrate-multiuser.ts body-composition       informe en seco: columnas de composición corporal en body_weights
+ *   npx tsx scripts/migrate-multiuser.ts body-composition --apply  etapa 5 (aditiva e idempotente)
+ *   npx tsx scripts/migrate-multiuser.ts down-body-composition --apply  quita esas columnas
  *   npx tsx scripts/migrate-multiuser.ts down-catalog --apply   recupera la tabla de ejercicios por usuario
  *   npx tsx scripts/migrate-multiuser.ts down-data --apply      revierte propietario y claves (no la fusión: usa la rama de Neon)
  *   npx tsx scripts/migrate-multiuser.ts down-schema --apply    elimina las tablas nuevas
@@ -19,7 +22,7 @@
 import 'dotenv/config'
 import { existsSync, readFileSync } from 'node:fs'
 import { Pool, neonConfig } from '@neondatabase/serverless'
-import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runCatalogRefresh, runCatalogRefreshDown, runDataDown, runDataMigration } from './migration/multiuser'
+import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runBodyComposition, runBodyCompositionDown, runCatalogRefresh, runCatalogRefreshDown, runDataDown, runDataMigration } from './migration/multiuser'
 
 const [stage, ...flags] = process.argv.slice(2)
 const apply = flags.includes('--apply')
@@ -91,6 +94,14 @@ try {
     if (!apply) throw new Error('down-catalog-refresh exige --apply')
     await runCatalogRefreshDown(conn)
     console.log('down-catalog-refresh aplicado.')
+  } else if (stage === 'body-composition') {
+    const report = await runBodyComposition(conn, { dryRun: !apply })
+    console.log(JSON.stringify(report, null, 2))
+    console.log(apply ? 'Columnas de composición corporal añadidas.' : 'Informe en seco: no se ha modificado nada.')
+  } else if (stage === 'down-body-composition') {
+    if (!apply) throw new Error('down-body-composition exige --apply')
+    await runBodyCompositionDown(conn)
+    console.log('down-body-composition aplicado.')
   } else if (stage === 'down-catalog') {
     if (!apply) throw new Error('down-catalog exige --apply')
     await runCatalogDown(conn)
@@ -100,7 +111,7 @@ try {
     await runDataDown(conn, adminEmail)
     console.log('down-data aplicado.')
   } else {
-    throw new Error('Uso: schema | data | catalog | catalog-refresh | down-catalog-refresh | down-catalog | down-data | down-schema  [--apply] [--backup-file ruta]')
+    throw new Error('Uso: schema | data | catalog | catalog-refresh | body-composition | down-body-composition | down-catalog-refresh | down-catalog | down-data | down-schema  [--apply] [--backup-file ruta]')
   }
 } finally {
   await pool.end()

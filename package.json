@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-ocr-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-ocr-assets.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -33,6 +35,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@tesseract.js-data/spa": "^1.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
@@ -41,6 +44,7 @@
     "drizzle-kit": "^0.31.11",
     "fake-indexeddb": "^6.2.5",
     "oxlint": "^1.81.0",
+    "tesseract.js": "^7.0.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"

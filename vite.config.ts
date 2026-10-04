@@ -31,10 +31,19 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/ocr\//],
         // Fuentes latinas disponibles offline (sin subconjuntos cirílico/vietnamita/latin-ext)
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['**/*-cyrillic-*', '**/*-vietnamese-*', '**/*-latin-ext-*'],
+        globIgnores: ['**/*-cyrillic-*', '**/*-vietnamese-*', '**/*-latin-ext-*', 'ocr/**'],
+        // OCR autoalojado (~6 MB por dispositivo): fuera del precache; se descarga la primera vez que se abre Importar y
+        // después se sirve de la caché (funciona sin red). El idioma lo guarda además tesseract.js en IndexedDB.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/ocr/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'ocr-v1', expiration: { maxEntries: 8 }, cacheableResponse: { statuses: [0, 200] } },
+          },
+        ],
       },
     }),
   ],

@@ -37,3 +37,6 @@ dist-ssr
 
 # Documentos y fotos personales (no se suben)
 /documents/
+
+# Ficheros de OCR autoalojados (se generan con scripts/copy-ocr-assets.mjs)
+/public/ocr/

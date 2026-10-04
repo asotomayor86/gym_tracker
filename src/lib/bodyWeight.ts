@@ -1,4 +1,5 @@
 import { alive, db, removeFrom, saveTo, type GymDB } from '../db/db'
+import { MEASUREMENT_KEYS, TIME_RE, fieldOf, outOfRange, pickMeasurement, type BodyMeasurement, type MeasurementKey, type MeasurementSource } from './bodyMeasurement'
 import type { BodyWeight } from './types'
 
 export const MIN_WEIGHT_KG = 20
@@ -36,9 +37,63 @@ export async function setBodyWeight(date: string, weightKg: number, note?: strin
   }
   const id = bodyWeightId(date)
   const prev = await d.bodyWeights.get(id)
+  const live = prev && !prev.deletedAt ? prev : undefined
+  // Un peso manual NO debe borrar la composición corporal que ya hubiera ese día (importada de la báscula).
+  const { id: _i, updatedAt: _u, deletedAt: _d, ...kept } = live ?? ({} as Partial<BodyWeight>)
   return saveTo(d, 'bodyWeights', {
-    id, date, weightKg: Math.round(weightKg * 100) / 100, note: note ?? (prev && !prev.deletedAt ? prev.note : ''),
-  })
+    ...kept, id, date, weightKg: Math.round(weightKg * 100) / 100, note: note ?? live?.note ?? '', source: live?.source ?? 'manual',
+  } as never)
+}
+
+export interface SaveMeasurementOptions {
+  /** Hora de la medición (HH:mm). Si se omite se conserva la existente. */
+  time?: string | null
+  source?: MeasurementSource
+  note?: string
+  /**
+   * 'merge' (por defecto): los campos que llegan pisan a los existentes y el resto se conserva (p. ej. un peso manual
+   * y una importación sin peso se complementan). 'replace': la composición del día pasa a ser SOLO la que llega
+   * (los indicadores que no vienen se quitan), pero el peso y la nota se conservan si no se aportan.
+   */
+  mode?: 'merge' | 'replace'
+}
+
+/** Medición del día (viva) o undefined: la interfaz lo usa para preguntar «ya existe una medición, ¿sustituir?». */
+export async function getMeasurement(date: string, d: GymDB = db): Promise<BodyWeight | undefined> {
+  assertDate(date)
+  const row = await d.bodyWeights.get(bodyWeightId(date))
+  return row && !row.deletedAt ? row : undefined
+}
+
+/**
+ * Guarda una medición completa (peso + composición) de un día: UNA por día (id `bw-YYYY-MM-DD`), con upsert.
+ * Valida rangos plausibles (RangeError con la lista de campos) y exige peso (el de la medición o el ya guardado).
+ */
+export async function saveMeasurement(date: string, values: BodyMeasurement, opts: SaveMeasurementOptions = {}, d: GymDB = db): Promise<BodyWeight> {
+  assertDate(date)
+  if (opts.time !== undefined && opts.time !== null && !TIME_RE.test(opts.time)) throw new RangeError(`Hora no válida: ${opts.time}`)
+  const clean = pickMeasurement(values)
+  const bad = outOfRange(clean)
+  if (bad.length) throw new RangeError(`Valores fuera de rango: ${bad.map((k) => fieldOf(k).label).join(', ')}`)
+
+  const id = bodyWeightId(date)
+  const prevRow = await d.bodyWeights.get(id)
+  const prev = prevRow && !prevRow.deletedAt ? prevRow : undefined
+  const weightKg = clean.weightKg ?? prev?.weightKg
+  if (weightKg === undefined) throw new RangeError('Falta el peso de la medición')
+
+  const prevComp = pickMeasurement(prev as Partial<Record<MeasurementKey, unknown>> | undefined)
+  delete prevComp.weightKg
+  const { weightKg: _w, ...cleanComp } = clean
+  const comp: Partial<Record<MeasurementKey, number | null>> = (opts.mode ?? 'merge') === 'replace' ? { ...cleanComp } : { ...prevComp, ...cleanComp }
+  if (opts.mode === 'replace') for (const k of MEASUREMENT_KEYS) if (k !== 'weightKg' && prevComp[k] !== undefined && comp[k] === undefined) comp[k] = null // el servidor solo escribe las columnas presentes: se envía null explícito
+
+  return saveTo(d, 'bodyWeights', {
+    id, date, weightKg: Math.round(weightKg * 100) / 100, note: opts.note ?? prev?.note ?? '',
+    measuredAt: opts.time === null ? undefined : (opts.time ?? prev?.measuredAt),
+    source: opts.source ?? prev?.source ?? 'manual',
+    ...comp,
+  } as never)
 }
 
 /** Borrado lógico del registro del día (se propaga por sync). */

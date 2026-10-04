@@ -1,3 +1,4 @@
+import type { BodyMeasurement, MeasurementSource } from './bodyMeasurement'
 import type { Unit } from './units'
 
 export type Effort = 'easy_done' | 'hard_done' | 'failed_close' | 'failed'
@@ -77,11 +78,18 @@ export interface Biometric extends SyncFields {
 }
 
 /** Peso corporal: un registro por día (id = `bw-${date}`), siempre en kg. */
-export interface BodyWeight extends SyncFields {
+/** Indicadores de composición de una fila: opcionales; `null` = quitado explícitamente (así se propaga por sync). */
+type Nullable<T> = { [K in keyof T]?: T[K] | null }
+
+export interface BodyWeight extends SyncFields, Nullable<Omit<BodyMeasurement, 'weightKg'>> {
   /** Día local, formato YYYY-MM-DD. */
   date: string
   weightKg: number
   note: string
+  /** Hora de la medición (HH:mm), si se conoce (p. ej. la de la báscula). */
+  measuredAt?: string
+  source?: MeasurementSource
+  // + los indicadores de composición corporal opcionales de BodyMeasurement (bmi, bodyFatPct, …)
 }
 
 /** Preferencias del usuario sincronizadas: una sola fila con id 'prefs'. */
