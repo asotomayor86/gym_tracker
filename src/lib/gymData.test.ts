@@ -21,9 +21,9 @@ describe('gymData', () => {
     }
   })
 
-  it('solo hay filas verificadas: 23 sí y 16 no, y ningún ejercicio del catálogo queda sin verificar', () => {
+  it('solo hay filas verificadas: 26 sí y 16 no, y ningún ejercicio del catálogo queda sin verificar', () => {
     const rows = availabilityRows()
-    expect(rows.filter((r) => r.available).length).toBe(23)
+    expect(rows.filter((r) => r.available).length).toBe(26)
     expect(rows.filter((r) => !r.available).length).toBe(16)
     expect(new Set(rows.map((r) => `${r.exerciseId}:${r.gymId}`)).size).toBe(rows.length)
     expect(availabilityOf('seed-ex-abductores-en-maquina', 'gym-forus')).toBe(true)

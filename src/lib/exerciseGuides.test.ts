@@ -197,7 +197,9 @@ describe('tronco y abducción de cadera (máquinas de Forus)', () => {
     for (const x of GUIDES) {
       const d = x.diagram
       expect(d.trunk !== undefined, `${x.key}: trunk`).toBe(d.limb === 'tronco')
-      expect(d.hipAbduction !== undefined, `${x.key}: hipAbduction`).toBe(x.key === 'Abducción de cadera de pie en máquina')
+      expect(d.hipAbduction !== undefined, `${x.key}: hipAbduction`).toBe(
+        x.key === 'Abducción de cadera de pie en máquina' || x.key === 'Aducción de cadera de pie en máquina',
+      )
     }
   })
 
@@ -206,5 +208,30 @@ describe('tronco y abducción de cadera (máquinas de Forus)', () => {
     expect(findGuide('Remo alto en máquina')?.muscleIds?.primary).toEqual(['trapM', 'rhomb', 'dpost'])
     expect(findGuide('Abducción de cadera de pie en máquina')?.muscleIds?.primary).toEqual(['gmed', 'tfl'])
     expect(findGuide('Jalón en máquina con palancas')?.diagram.implement).toBe('maquina')
+  })
+})
+
+describe('funciones del Multi Hip', () => {
+  it('aducción: la concéntrica junta la pierna (30° → 0°), de pie y vista frontal', () => {
+    const g = findGuide('Aducción de cadera de pie en máquina')!
+    expect(g.diagram.pose).toBe('de-pie')
+    expect(g.diagram.view).toBe('frontal')
+    const h = g.diagram.hipAbduction!
+    for (const v of [h.from, h.to]) expect(v >= 0 && v <= 45, `aducción ${v}°`).toBe(true)
+    expect(h.from).toBeGreaterThan(h.to)
+    expect(g.primary).toEqual(['aductores'])
+    expect(g.muscleIds?.primary).toEqual(['add'])
+  })
+
+  it('flexión y extensión de cadera: de pie, vista lateral y pierna', () => {
+    for (const key of ['Flexión de cadera de pie en máquina', 'Extensión de cadera de pie en máquina']) {
+      const g = findGuide(key)!
+      expect(g.diagram.pose, key).toBe('de-pie')
+      expect(g.diagram.limb, key).toBe('pierna')
+      expect(g.diagram.view, key).toBeUndefined()
+      expect(g.diagram.loadPhase, key).toBe('ida')
+    }
+    expect(findGuide('Flexión de cadera de pie en máquina')?.muscleIds?.primary).toEqual(['rfem'])
+    expect(findGuide('Extensión de cadera de pie en máquina')?.muscleIds?.primary).toEqual(['glute'])
   })
 })

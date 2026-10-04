@@ -63,6 +63,9 @@ export const AVAILABILITY: Record<string, Record<string, boolean>> = {
   'seed-ex-remo-alto-en-maquina': { [FORUS]: true }, // Upper Back
   'seed-ex-abduccion-de-cadera-de-pie-en-maquina': { [FORUS]: true }, // Multi Hip
   'seed-ex-jalon-en-maquina-con-palancas': { [FORUS]: true }, // Pulldown / Vertical Traction
+  'seed-ex-flexion-de-cadera-de-pie-en-maquina': { [FORUS]: true }, // Multi Hip (flexión)
+  'seed-ex-extension-de-cadera-de-pie-en-maquina': { [FORUS]: true }, // Multi Hip (extensión)
+  'seed-ex-aduccion-de-cadera-de-pie-en-maquina': { [FORUS]: true }, // Multi Hip (aducción)
 }
 
 export interface AvailabilityRow {

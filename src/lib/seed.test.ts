@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findGuide } from './exerciseGuides'
 import { MUSCLE_ID_GROUP } from './guideTypes'
-import { buildSeedRows, slugify } from './seed'
+import { buildSeedRows, EN_NAMES, slugify } from './seed'
 
 describe('buildSeedRows', () => {
   const rows = buildSeedRows()
@@ -81,5 +81,44 @@ describe('aductores', () => {
     expect(e?.primaryMuscle).toBe('aductores')
     expect(findGuide('Aductores en máquina')?.primary).toEqual(['aductores'])
     expect(MUSCLE_ID_GROUP.add).toBe('aductores')
+  })
+})
+
+describe('nameEn', () => {
+  const rows = buildSeedRows().exercises
+
+  it('todos los ejercicios tienen nombre en inglés, único, en Title Case y de hasta 120 caracteres', () => {
+    for (const e of rows) {
+      expect(e.nameEn, e.name).toBeTruthy()
+      expect(e.nameEn!.length, e.name).toBeLessThanOrEqual(120)
+      // Title Case: cada palabra empieza por mayúscula o dígito (se admiten guiones, paréntesis y barras)
+      for (const w of e.nameEn!.split(/[\s/()-]+/).filter(Boolean)) expect(/^[A-Z0-9]/.test(w), `${e.nameEn}: «${w}»`).toBe(true)
+    }
+    const names = rows.map((e) => e.nameEn!.toLowerCase())
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('EN_NAMES no tiene claves sobrantes y no cambia el nombre español ni los ids', () => {
+    expect(Object.keys(EN_NAMES).sort()).toEqual(rows.map((e) => e.name).sort())
+    expect(rows.find((e) => e.name === 'Remo alto en máquina')?.id).toBe('seed-ex-remo-alto-en-maquina')
+  })
+
+  it('las máquinas Technogym se encuentran por el nombre de la máquina', () => {
+    const find = (q: string) => rows.filter((e) => e.nameEn!.toLowerCase().includes(q)).map((e) => e.name)
+    expect(find('upper back')).toEqual(['Remo alto en máquina'])
+    expect(find('vertical traction')).toEqual(['Jalón en máquina con palancas'])
+    expect(find('low row')).toEqual(['Remo sentado en máquina'])
+    expect(find('reverse fly')).toEqual(['Pájaros en peck deck (deltoides posterior)'])
+    expect(find('delts machine')).toEqual(['Elevaciones laterales en máquina'])
+    expect(find('arm curl')).toEqual(['Curl de bíceps en máquina'])
+    expect(find('lower back')).toEqual(['Extensión lumbar en máquina'])
+    expect(find('pulley')).toEqual(['Remo en polea baja'])
+    expect(find('pectoral')).toEqual(['Peck deck (aperturas en máquina)'])
+    expect(find('multi hip').sort()).toEqual([
+      'Abducción de cadera de pie en máquina',
+      'Aducción de cadera de pie en máquina',
+      'Extensión de cadera de pie en máquina',
+      'Flexión de cadera de pie en máquina',
+    ])
   })
 })

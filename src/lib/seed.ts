@@ -59,7 +59,61 @@ export const SEED: Seed[] = [
   ['Remo alto en máquina', 'espalda', ['hombro', 'biceps'], 'Máquina'],
   ['Abducción de cadera de pie en máquina', 'gluteo', [], 'Máquina'],
   ['Jalón en máquina con palancas', 'espalda', ['biceps'], 'Máquina'],
+  // Las otras funciones del Multi Hip (Technogym): flexión, extensión y aducción de cadera de pie
+  ['Flexión de cadera de pie en máquina', 'cuadriceps', ['core'], 'Máquina'],
+  ['Extensión de cadera de pie en máquina', 'gluteo', ['isquios'], 'Máquina'],
+  ['Aducción de cadera de pie en máquina', 'aductores', [], 'Máquina'],
 ]
+
+/**
+ * Nombre en inglés (nameEn) por nombre español. Estándar de gimnasio; cuando la máquina es Technogym, el nombre
+ * de la máquina va entre paréntesis para que la búsqueda por «upper back» o «vertical traction» los encuentre.
+ * Title Case, <= 120 caracteres y único entre ejercicios.
+ */
+export const EN_NAMES: Record<string, string> = {
+  'Prensa de piernas': 'Leg Press',
+  'Hack squat': 'Hack Squat',
+  'Sentadilla en multipower': 'Smith Machine Squat',
+  'Extensión de cuádriceps': 'Leg Extension',
+  'Curl femoral tumbado': 'Lying Leg Curl',
+  'Curl femoral sentado': 'Seated Leg Curl',
+  'Abductores en máquina': 'Seated Hip Abduction (Abductor Machine)',
+  'Aductores en máquina': 'Seated Hip Adduction (Adductor Machine)',
+  'Patada de glúteo en máquina': 'Glute Kickback Machine (Glute)',
+  'Hip thrust en máquina': 'Machine Hip Thrust',
+  'Elevación de gemelos sentado': 'Seated Calf Raise',
+  'Elevación de gemelos en prensa': 'Leg Press Calf Raise',
+  'Press de pecho en máquina': 'Chest Press Machine',
+  'Press inclinado en máquina': 'Incline Chest Press Machine (Chest Incline)',
+  'Press banca en multipower': 'Smith Machine Bench Press',
+  'Peck deck (aperturas en máquina)': 'Pec Deck (Machine Fly / Pectoral)',
+  'Cruce de poleas': 'Cable Crossover',
+  'Fondos asistidos en máquina': 'Assisted Dip Machine',
+  'Press de hombros en máquina': 'Machine Shoulder Press',
+  'Elevaciones laterales en máquina': 'Machine Lateral Raise (Delts Machine)',
+  'Elevaciones laterales en polea': 'Cable Lateral Raise',
+  'Pájaros en peck deck (deltoides posterior)': 'Reverse Pec Deck (Reverse Fly)',
+  'Face pull en polea': 'Cable Face Pull',
+  'Curl de bíceps en máquina': 'Machine Biceps Curl (Arm Curl)',
+  'Curl de bíceps en polea': 'Cable Biceps Curl',
+  'Curl en banco Scott (máquina)': 'Preacher Curl Machine',
+  'Extensión de tríceps en polea (cuerda)': 'Cable Triceps Pushdown (Rope)',
+  'Extensión de tríceps en máquina': 'Machine Triceps Extension',
+  'Press de tríceps en máquina (fondos)': 'Seated Dip Machine',
+  'Jalón al pecho': 'Lat Pulldown',
+  'Remo sentado en máquina': 'Chest-Supported Machine Row (Low Row)',
+  'Remo en polea baja': 'Seated Cable Row (Pulley)',
+  'Dominadas asistidas en máquina': 'Assisted Pull-Up Machine',
+  'Crunch en máquina': 'Ab Crunch Machine',
+  'Crunch en polea': 'Cable Crunch',
+  'Extensión lumbar en máquina': 'Lower Back Extension Machine (Lower Back)',
+  'Remo alto en máquina': 'High Row Machine (Upper Back)',
+  'Abducción de cadera de pie en máquina': 'Standing Hip Abduction (Multi Hip)',
+  'Jalón en máquina con palancas': 'Lever Lat Pulldown (Vertical Traction / Pulldown)',
+  'Flexión de cadera de pie en máquina': 'Standing Hip Flexion (Multi Hip)',
+  'Extensión de cadera de pie en máquina': 'Standing Hip Extension (Multi Hip)',
+  'Aducción de cadera de pie en máquina': 'Standing Hip Adduction (Multi Hip)',
+}
 
 // [ejercicio, series, repeticiones, descanso en s]. Series de 12-15 reps y descansos cortos
 // para mantener el pulso alto (objetivo: gasto calórico con fuerza).
@@ -133,6 +187,7 @@ export function buildSeedRows(): SeedRows {
     primaryMuscle,
     secondaryMuscles: [...secondaryMuscles],
     equipment,
+    nameEn: EN_NAMES[name] ?? '',
     notes: '',
   }))
 

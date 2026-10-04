@@ -1024,6 +1024,84 @@ const BASE: ExerciseGuide[] = [
     ],
     diagram: d('sentado', 10, 'maquina', 'tiron', [0.453, 0.783], [0.463, 0.516], 'Tira de las asas hacia los hombros'),
   }),
+
+  g('Flexión de cadera de pie en máquina', 'aislamiento', 2, ['cuadriceps'], ['core'], {
+    setup: [
+      'Elige la función de flexión de cadera de la máquina.',
+      'Coloca el cojín sobre la parte baja del muslo, justo encima de la rodilla.',
+      'Apoya la otra pierna con el pie plano y agárrate a las asas.',
+    ],
+    execution: [
+      'Mantén el tronco erguido.',
+      'Sube la rodilla hacia el pecho con la cadera como eje.',
+      'Pausa un segundo arriba apretando el muslo.',
+      'Baja despacio hasta la posición de salida.',
+    ],
+    breathing: 'Espira al subir e inspira al bajar.',
+    tips: [
+      'Empieza con poco peso: el equilibrio se gana con el tiempo.',
+      'Mantén la pelvis quieta; solo se mueve la pierna.',
+    ],
+    mistakes: [
+      'Inclinarte hacia atrás para subir más.',
+      'Balancear el tronco para coger impulso.',
+      'Arquear la zona lumbar.',
+      'Bajar la pierna de golpe.',
+    ],
+    diagram: d('de-pie', 0, 'maquina', 'flexion', [0.467, 0.047], [0.622, 0.22], 'Sube la rodilla hacia el pecho'),
+  }),
+
+  g('Extensión de cadera de pie en máquina', 'aislamiento', 2, ['gluteo'], ['isquios'], {
+    setup: [
+      'Elige la función de extensión de cadera de la máquina.',
+      'Coloca el cojín en la parte trasera del muslo, encima de la rodilla.',
+      'Apoya la otra pierna con el pie plano y agárrate a las asas con el tronco erguido.',
+    ],
+    execution: [
+      'Parte con la pierna estirada bajo la cadera.',
+      'Lleva la pierna hacia atrás con la rodilla casi recta.',
+      'Aprieta el glúteo un segundo al final.',
+      'Vuelve despacio sin balancear el tronco.',
+    ],
+    breathing: 'Espira al llevar la pierna atrás e inspira al volver.',
+    tips: [
+      'Piensa en llevar el talón hacia atrás, no en arquear la espalda.',
+      'Recorrido corto: la extensión de cadera llega a unos 20°.',
+    ],
+    mistakes: [
+      'Arquear la zona lumbar para ganar recorrido.',
+      'Inclinar el tronco hacia delante.',
+      'Dar impulso con el cuerpo.',
+      'Girar la cadera hacia fuera.',
+    ],
+    diagram: d('de-pie', 0, 'maquina', 'extension', [0.489, 0.047], [0.344, 0.072], 'Lleva la pierna hacia atrás'),
+  }),
+
+  g('Aducción de cadera de pie en máquina', 'aislamiento', 2, ['aductores'], [], {
+    setup: [
+      'Elige la función de aducción de cadera de la máquina.',
+      'Coloca el cojín en la cara interna del muslo, cerca de la rodilla.',
+      'Apoya la otra pierna con el pie plano y agárrate a las asas.',
+    ],
+    execution: [
+      'Parte con la pierna separada hacia el lateral.',
+      'Lleva la pierna hacia la otra apretando la cara interna del muslo.',
+      'Pausa un segundo al llegar.',
+      'Vuelve despacio a la posición de salida.',
+    ],
+    breathing: 'Espira al juntar e inspira al separar.',
+    tips: [
+      'Mantén el tronco erguido y la punta del pie hacia delante.',
+      'Empieza con poco peso: la zona es sensible.',
+    ],
+    mistakes: [
+      'Inclinar el tronco hacia el lado contrario.',
+      'Balancear para coger impulso.',
+      'Abrir demasiado y tirar de la ingle.',
+      'Hacerlo con prisa.',
+    ],
+    diagram: d('de-pie', 0, 'maquina', 'apertura', [0.5, 0.053], [0.467, 0.047], 'Junta la pierna hacia la otra'),
+  }),
 ]
 
 type Step3 = [string, string, string]
@@ -1093,6 +1171,9 @@ const MOTION: Record<string, Motion> = {
   'Remo alto en máquina': { steps: ROW },
   'Abducción de cadera de pie en máquina': { steps: ['Piernas juntas', 'Separa la pierna', 'Pierna abierta'], limb: 'pierna', view: 'frontal', hipAbduction: { from: 0, to: 35 } },
   'Jalón en máquina con palancas': { steps: ['Brazos estirados', 'Baja los codos', 'Asas en los hombros'], via: [0.458, 0.649] },
+  'Flexión de cadera de pie en máquina': { steps: ['Pierna estirada', 'Sube la rodilla', 'Rodilla arriba'], limb: 'pierna', via: [0.544, 0.133] },
+  'Extensión de cadera de pie en máquina': { steps: ['Pierna bajo la cadera', 'Lleva la pierna atrás', 'Pierna extendida atrás'], limb: 'pierna', via: [0.422, 0.053] },
+  'Aducción de cadera de pie en máquina': { steps: ['Pierna separada', 'Junta la pierna', 'Piernas juntas'], limb: 'pierna', view: 'frontal', hipAbduction: { from: 30, to: 0 } },
 }
 
 const MERGED: ExerciseGuide[] = BASE.map((x) => {
@@ -1202,6 +1283,9 @@ const MUSCLES: Record<string, { primary: MuscleId[]; secondary: MuscleId[] }> = 
   'Remo alto en máquina': { primary: ['trapM', 'rhomb', 'dpost'], secondary: ['infra', 'teres', 'lat', 'biceps'] },
   'Abducción de cadera de pie en máquina': { primary: ['gmed', 'tfl'], secondary: ['glute'] },
   'Jalón en máquina con palancas': { primary: ['lat', 'teres'], secondary: BACK_PULL_SEC },
+  'Flexión de cadera de pie en máquina': { primary: ['rfem'], secondary: ['rectus', 'vlat', 'vmed'] },
+  'Extensión de cadera de pie en máquina': { primary: ['glute'], secondary: ['ham', 'hamS'] },
+  'Aducción de cadera de pie en máquina': { primary: ['add'], secondary: [] },
 }
 
 export const GUIDES: ExerciseGuide[] = MERGED.map((x) => {
