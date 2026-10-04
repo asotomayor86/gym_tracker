@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import type { PGlite } from '@electric-sql/pglite'
 import { describe, expect, it, vi } from 'vitest'
 import { ensureAdmin } from '../../api/_lib/bootstrap'
-import { type Conn, type Q, type Row, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
+import { type Conn, type Q, type Row, pgArray, SCHEMA_DOWN, SCHEMA_UP, runCatalogDown, runCatalogMigration, runDataDown, runDataMigration } from '../../scripts/migration/multiuser'
 import { buildSeedRows } from '../lib/seed'
 import { makeTestDb } from './testServer'
 
@@ -29,6 +29,18 @@ const OLD_DDL = [
 const connOf = (p: PGlite): Conn => {
   const wrap = (x: { query: PGlite['query'] }): Q => async (sql, params) => (await x.query(sql, params as never)).rows as Row[]
   return { query: wrap(p), transaction: (fn) => p.transaction(async (tx) => fn(wrap(tx))) }
+}
+
+/**
+ * Simula el comportamiento de node-postgres / @neondatabase/serverless con los arrays: no se parsean y llegan como texto '{a,b}'
+ * (PGlite sí los parsea, y por eso este fallo no se veía en los tests). El script debe funcionar igual con ambos.
+ */
+const textArraysConn = (c: Conn): Conn => {
+  // También imita que int8 (bigint, count(*)) llega como texto, como en node-postgres.
+  const flat = (rows: Row[]): Row[] =>
+    rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, Array.isArray(v) && v.every((x) => typeof x === 'string') ? `{${v.join(',')}}` : typeof v === 'number' || typeof v === 'bigint' ? String(v) : v])))
+  const wrap = (q: Q): Q => async (sql, params) => flat(await q(sql, params))
+  return { query: wrap(c.query), transaction: (fn) => c.transaction((q) => fn(wrap(q))) }
 }
 
 type Backup = Record<string, Record<string, unknown>[]>
@@ -99,6 +111,32 @@ async function setup(data: Backup) {
 
 const q = async <T = Row>(p: PGlite, sql: string, params: unknown[] = []) => (await p.query<T>(sql, params as never)).rows
 const count = async (p: PGlite, sql: string) => Number((await q<{ c: number }>(p, sql))[0].c)
+
+describe('arrays de Postgres sin parsear (comportamiento de node-postgres/Neon)', () => {
+  it('pgArray entiende arrays ya parseados y el texto {a,b}', () => {
+    expect(pgArray(['user_id', 'id'])).toEqual(['user_id', 'id'])
+    expect(pgArray('{user_id,id}')).toEqual(['user_id', 'id'])
+    expect(pgArray('{}')).toEqual([])
+    expect(pgArray('{"a b",c}')).toEqual(['a b', 'c'])
+    expect(pgArray(null)).toEqual([])
+  })
+
+  it('data y catalog funcionan, detectan "ya migrado" y hacen down con arrays devueltos como texto', async () => {
+    const { p, conn: real } = await setup(fixture())
+    const conn = textArraysConn(real)
+    // Comprobación de que el simulador realmente rompe el parseo: sin pgArray las columnas serían una cadena.
+    expect(typeof (await conn.query(`SELECT array_agg(a.attname::text) c FROM pg_attribute a WHERE a.attrelid = 'set_logs'::regclass AND a.attnum > 0`))[0].c).toBe('string')
+    const done = await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 9000 })
+    expect(done.alreadyMigrated).toBe(false)
+    expect((await runDataMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 9100 })).alreadyMigrated).toBe(true) // idempotencia real
+    expect((await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: true, now: 9200 })).catalogExercisesLive).toBeGreaterThan(30)
+    await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false, now: 9200 })
+    expect((await runCatalogMigration(conn, { adminEmail: ADMIN, dryRun: false })).alreadyMigrated).toBe(true)
+    await runCatalogDown(conn)
+    await runDataDown(conn, ADMIN)
+    expect(await count(p, `SELECT count(*) c FROM set_logs WHERE user_id = 'owner'`)).toBe(31)
+  })
+})
 
 describe('migración multiusuario (esquema anterior → claves compuestas)', () => {
   it('el informe en seco es exacto y NO toca nada; aplicar deja el estado esperado', async () => {

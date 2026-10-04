@@ -152,9 +152,22 @@ async function counts(q: Q, owner: string): Promise<Counts> {
   }
 }
 
+/**
+ * Normaliza un array de Postgres: node-postgres / @neondatabase/serverless NO parsean algunos tipos de array (p. ej. `name[]`, oid 1003)
+ * y devuelven el texto '{a,b}'; PGlite sí los parsea. Acepta ambas formas.
+ */
+export function pgArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(String)
+  if (typeof v === 'string') {
+    const inner = v.trim().replace(/^\{/, '').replace(/\}$/, '')
+    return inner === '' ? [] : inner.split(',').map((x) => x.replace(/^"(.*)"$/, '$1'))
+  }
+  return []
+}
+
 async function pkColumns(q: Q, table: string): Promise<{ name: string; cols: string[] } | null> {
   const rows = await q(
-    `SELECT c.conname AS name, array_agg(a.attname ORDER BY k.ord) AS cols
+    `SELECT c.conname AS name, array_agg(a.attname::text ORDER BY k.ord) AS cols
        FROM pg_constraint c
        JOIN pg_class t ON t.oid = c.conrelid
        JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord) ON true
@@ -163,7 +176,7 @@ async function pkColumns(q: Q, table: string): Promise<{ name: string; cols: str
       GROUP BY c.conname`,
     [table],
   )
-  return rows[0] ? { name: rows[0].name as string, cols: rows[0].cols as string[] } : null
+  return rows[0] ? { name: String(rows[0].name), cols: pgArray(rows[0].cols) } : null
 }
 
 export interface DataOptions {
