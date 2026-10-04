@@ -16,10 +16,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate', // el SW nuevo se activa solo; src/lib/swUpdate.ts decide cuándo recargar la página
       injectRegister: null, // el registro lo hace src/lib/swUpdate.ts
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Gym Tracker',
-        short_name: 'Gym',
+        name: 'GymTracker',
+        short_name: 'GymTracker',
         description: 'Seguimiento de entrenamientos',
         theme_color: '#05070a',
         background_color: '#05070a',
@@ -27,7 +27,8 @@ export default defineConfig({
         start_url: '/',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
