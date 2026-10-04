@@ -2,7 +2,7 @@ import { ANDROID, CANVAS, SEG, standingHipY } from '../../lib/rigSpec'
 import { MUSCLE_ID_GROUP, MUSCLE_IDS, type MuscleId } from '../../lib/guideTypes'
 import type { MuscleGroup } from '../../lib/types'
 import { add, mul, nrm, type P, sub, unit } from './geom'
-import { band, block, hand, kneecap, newCtx, type Ctx, type Zone } from './dummy'
+import { band, block, hand, handJ, kneecap, newCtx, STYLE, type Ctx, type Zone } from './dummy'
 
 /**
  * Escena del maniquí: monta las piezas facetadas (dummy.ts) según la pose del rig y los músculos a resaltar.
@@ -69,12 +69,13 @@ export function buildSide(o: SideIn): Scene {
   // pie: talón, empeine y puntera sobre una suela oscura; sigue a la espinilla (o al pedal en gemelos)
   const ex = o.footVec ?? unit([A[1] - knee[1], -(A[0] - knee[0])]), ey: P = [-ex[1], ex[0]], nUp: P = mul(ey, -1)
   const F = (x: number, y: number): P => add(A, add(mul(ex, x), mul(ey, y)))
-  block(cx, { a: F(-6, 3), b: F(4.4, 3), wa: 3.1, c: 1.2, n: nUp, k: 0.3 })
-  block(cx, { a: F(3.4, 3.3), b: F(11.4, 3.5), wa: 3, wb: 2.7, c: 1.1, n: nUp, k: 0.3 })
-  block(cx, { a: F(10.4, 3.9), b: F(19.8, 4.2), wa: 2.5, wb: 2, c: 1.5, n: nUp, k: 0.3 })
-  block(cx, { a: F(-5.8, 6.1), b: F(19.6, 6.1), wa: 0.5, c: 0.3, n: nUp, mat: 'dark' })
   block(cx, { a: knee, b: A, wa: 6.6, wb: 4.2, n: nSh, zones: [zn(L, ['tib']), null, zn(L, ['gastroc', 'gastrocM', 'soleus'])], cut: 'b' })
-  band(cx, A, sub(A, knee), 4, 2)
+  // pie: caña alta (12 px, igual que de frente) que cubre el tobillo, empeine y puntera más bajos, y suela oscura
+  block(cx, { a: F(-6, 0), b: F(4.4, 0), wa: 6, c: 1.8, n: nUp, k: 0.3 })
+  block(cx, { a: F(3.4, 1.4), b: F(11.4, 1.9), wa: 4.7, wb: 4.2, c: 1.5, n: nUp, k: 0.3 })
+  block(cx, { a: F(10.4, 3), b: F(19.8, 3.6), wa: 3.1, wb: 2.6, c: 1.6, n: nUp, k: 0.3 })
+  block(cx, { a: F(-5.8, 6.1), b: F(19.6, 6.1), wa: 0.5, c: 0.3, n: nUp, mat: 'dark' })
+  band(cx, F(-1, -5.6), ex, 1.4, 4.4)
   // tronco: núcleo oscuro + pelvis, abdomen y pecho
   block(cx, { a: T(-0.02), b: T(1), wa: 3.4, c: 0.6, mat: 'dark', n: nT })
   block(cx, { a: T(-0.16), b: T(0.2), wa: 10.6, wb: 10.8, n: nT, zones: [zn(L, ['tfl']), null, zn(L, ['glute', 'gmed'])], c: 2.6 })
@@ -143,9 +144,9 @@ export function buildFront(o: FrontIn): Scene {
     block(cx, { a: a.sh, b: a.el, wa: 6.2, wb: 5.2, n: n1, sym: true, zones: back ? zz(tri, tri, null) : zz(null, bic, null), c: 1.8 })
     const fd = unit(sub(a.hand, a.el)), n2 = nrm(fd)
     block(cx, { a: a.el, b: a.hand, wa: 5, wb: 3.8, n: n2, sym: true, c: 1.6, zones: back ? [null, zn(L, ['fext']), null] : [null, zn(L, ['brachrad', 'fflex']), null] })
-    band(cx, a.el, dA, 4.6, 3.4, true)
-    if (back) kneecap(cx, a.el, dA, 0, [-1, 0])
-    hand(cx, a.hand, sub(a.hand, a.el))
+    if (!back) band(cx, a.el, dA, 4.6, 3.4, true)
+    else if (STYLE.backJoint === 'thin') band(cx, a.el, dA, 4.4, 0.7, true)
+    handJ(cx, a.hand, sub(a.hand, a.el), [mx, a.hand[1]], back ? 6.4 : 9.4)
   }
   for (const sd of [-1, 1] as const) block(cx, { a: P(sd * 18.4, 0.5), b: P(sd * 18.4, 14.5), wa: 3.4, c: 1.1, mat: 'dark', n: N, sym: true })
   // piernas
@@ -159,17 +160,18 @@ export function buildFront(o: FrontIn): Scene {
     const zt = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerT ? [outer, centre, inner] : [inner, centre, outer])
     const zs = (outer: Zone, centre: Zone, inner: Zone): Zone[] => (outerS ? [outer, centre, inner] : [inner, centre, outer])
     const fx = ank[0] + sd * 0.9, fy = ank[1]
-    block(cx, { a: [ank[0], fy - 0.2], b: [fx, fy - 3], wa: 5.2, wb: 6.6, c: 1.4, n: N, sym: true, k: 0.34 })
-    block(cx, { a: [fx, fy - 4.6], b: [fx, fy - 0.4], wa: 7.2, wb: 8.4, c: 1.9, n: N, sym: true, k: 0.34 })
-    block(cx, { a: [fx, fy - 0.6], b: [fx, fy + 0.3], wa: 8.6, c: 0.4, n: N, mat: 'dark', sym: true })
     block(cx, { a: knee, b: ank, wa: 6.6, wb: 4.2, n: nS, sym: true, c: 2, zones: back ? zs(zn(L, ['gastroc']), zn(L, ['soleus']), zn(L, ['gastrocM'])) : zs(zn(L, ['tib']), zn(L, ['tib']), null) })
-    band(cx, ank, sub(ank, knee), 4.6, 2.2, true)
+    // pie de 12 px de alto, nunca más ancho que la pantorrilla (±6,6)
+    block(cx, { a: [ank[0], fy - 12], b: [fx, fy - 1], wa: 4.4, wb: 5.6, c: 2.2, n: N, sym: true, k: 0.34 })
+    block(cx, { a: [fx, fy - 6.4], b: [fx, fy - 0.4], wa: 5.8, c: 1.6, n: N, sym: true, k: 0.34 })
+    block(cx, { a: [fx, fy - 0.6], b: [fx, fy + 0.3], wa: 5.9, c: 0.4, n: N, mat: 'dark', sym: true })
+    band(cx, [ank[0], fy - 11], [0, 1], 4.5, 0.8, true)
     block(cx, {
       prof: outerT ? [THF.out, THF.inn] : [THF.inn, THF.out], a: hip, b: knee, wa: 9.2, wb: 7, n: nT, sym: true, c: 2.2,
       zones: back ? zt(zn(L, ['ham']), zn(L, ['ham', 'hamS']), zn(L, ['hamS'])) : zt(zn(L, ['vlat']), zn(L, ['rfem']), zn(L, ['vmed', 'add'])),
     })
-    if (back) band(cx, knee, sub(ank, hip), 5.4, 4.2, true)
-    else kneecap(cx, knee, sub(ank, hip), 0, N)
+    if (!back) kneecap(cx, knee, sub(ank, hip), 0, N)
+    else if (STYLE.backJoint === 'thin') band(cx, knee, sub(ank, hip), 5.4, 0.7, true)
   }
   // tronco
   const gm = zn(L, ['gmed']), gl = zn(L, ['glute']), tf = zn(L, ['tfl', 'gmed'])

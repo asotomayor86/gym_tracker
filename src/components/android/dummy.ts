@@ -117,7 +117,7 @@ export function hand(cx: Ctx, wrist: P, dir: P): void {
 /** Banda oscura de articulación (tobillo, codo, rodilla trasera). */
 export function band(cx: Ctx, p: P, axis: P, w: number, h: number, sym = false): void {
   const d = unit(axis)
-  block(cx, { a: add(p, mul(d, -h)), b: add(p, mul(d, h)), wa: w, wb: w, c: 1.1, mat: 'dark', n: nrm(d), sym })
+  block(cx, { a: add(p, mul(d, -h)), b: add(p, mul(d, h)), wa: w, wb: w, c: Math.min(1.1, h * 0.7), mat: 'dark', n: nrm(d), sym })
 }
 
 /** Rótula: placa hexagonal sobre una ranura oscura. */
@@ -125,4 +125,28 @@ export function kneecap(cx: Ctx, knee: P, axis: P, off = 0, n?: P): void {
   const d = unit(axis), nn = n ?? nrm(d), c = add(knee, mul(unit(nn), off))
   block(cx, { a: add(c, mul(d, -4.6)), b: add(c, mul(d, 5.2)), wa: 4.2, wb: 4.2, c: 1.3, mat: 'dark', n: nrm(d), sym: true })
   block(cx, { a: add(c, mul(d, -5.4)), b: add(c, mul(d, 3.4)), wa: 4.7, wb: 3.2, c: 2.2, n: nrm(d), k: 0.3, sym: true })
+}
+
+/**
+ * Estilo de la articulación trasera de codos y rodillas (vista de espalda): 'thin' = línea oscura muy fina,
+ * 'none' = sin articulación. En desarrollo se puede forzar con ?bj=none.
+ */
+export const STYLE: { backJoint: 'thin' | 'none' } = { backJoint: 'thin' }
+if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('bj') === 'none') STYLE.backJoint = 'none'
+
+/**
+ * Mano en J para las vistas frontal y de espalda: el tallo es el dorso de la mano y el gancho, los dedos,
+ * que se curvan hacia el cuerpo. `toward` es el punto (eje del cuerpo) hacia el que se curvan.
+ */
+export function handJ(cx: Ctx, wrist: P, dir: P, toward: P, hook: number): void {
+  const d = unit(dir)
+  const perp = nrm(d)
+  const want = sub(toward, wrist)
+  const s = dot(perp, [want[0], want[1] + 40]) >= 0 ? 1 : -1
+  const inward = mul(perp, s)
+  const end = add(wrist, mul(d, 8.8))
+  block(cx, { a: add(wrist, mul(d, 0.4)), b: end, wa: 3.5, wb: 4, c: 1.7, mat: 'dark', n: perp, sym: true })
+  const ang = 0.85 // ~50° hacia el cuerpo
+  const dh = unit(add(mul(d, Math.cos(ang)), mul(inward, Math.sin(ang))))
+  block(cx, { a: sub(end, mul(d, 2)), b: add(end, mul(dh, hook)), wa: 3.2, wb: 2.4, c: 1.5, mat: 'dark', n: nrm(dh), sym: true })
 }
