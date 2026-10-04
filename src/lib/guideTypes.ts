@@ -41,7 +41,19 @@ export interface MovementDiagram {
    */
   loadPhase?: 'ida' | 'vuelta'
   /** Extremidad que se mueve por from→to: 'brazo' (por defecto) o 'pierna' (prensa, extensión/curl de pierna, sentadilla…). */
-  limb?: 'brazo' | 'pierna'
+  limb?: 'brazo' | 'pierna' | 'tronco'
+  /**
+   * Con limb 'tronco' (extensión lumbar): inclinación del tronco respecto a la vertical, en grados
+   * (+ = hacia delante, − = reclinado hacia atrás), de la posición de salida a la final, interpolada con p.
+   * La cadera queda fija; hombro, cabeza y brazos siguen al tronco (brazos cruzados sobre el pecho).
+   * Rango admitido por los tests: −15…60°.
+   */
+  trunk?: { from: number; to: number }
+  /**
+   * Con pose 'de-pie', limb 'pierna' y view 'frontal' (abducción de cadera): separación lateral de la pierna que
+   * trabaja respecto a la vertical, en grados (0 = juntas), de la salida a la final. Rango admitido: 0…45°.
+   */
+  hipAbduction?: { from: number; to: number }
   /** Texto corto sobre el recorrido (p. ej. "Empuja hacia delante y arriba"). */
   caption?: string
 }

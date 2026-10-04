@@ -14,6 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import { dist, jointViolations, type P, poseAt, type RigPose } from '../components/android/geom'
 import { GUIDES } from './exerciseGuides'
+import { SEED } from './seed'
 import type { MovementDiagram } from './guideTypes'
 import { CANVAS, SPECIAL, toPx } from './rigSpec'
 
@@ -139,8 +140,8 @@ describe('anatomía del ciclo completo (120 fotogramas por ficha)', () => {
     expect(bad.length, String.fromCharCode(10) + bad.join(String.fromCharCode(10))).toBe(0)
   })
 
-  it('cubre las 35 fichas con 120 fotogramas cada una', () => {
-    expect(GUIDES.length).toBe(35)
+  it('cubre todas las fichas del catálogo con 120 fotogramas cada una', () => {
+    expect(GUIDES.length).toBe(SEED.length)
     expect(frames().length).toBe(120)
   })
 

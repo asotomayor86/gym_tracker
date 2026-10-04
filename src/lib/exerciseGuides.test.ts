@@ -54,7 +54,7 @@ describe('alcance del rig', () => {
   it('from/via/to quedan dentro del alcance, sin estirar ni plegar del todo la extremidad', () => {
     for (const x of GUIDES) {
       const d = x.diagram
-      if (d.pose === 'colgado') continue // el rig mueve el cuerpo y coloca las manos con from/to absolutos (ver test siguiente)
+      if (d.pose === 'colgado' || d.limb === 'tronco') continue // el rig mueve el cuerpo y coloca las manos con from/to absolutos (ver test siguiente)
       const leg = d.limb === 'pierna'
       const calf = leg && d.motion === 'elevacion'
       const root = rootOf(d.pose, d.backAngle, leg)
@@ -170,5 +170,41 @@ describe('muscleIds', () => {
   it('gemelos: sentado = sóleo principal, prensa = gastrocnemio principal', () => {
     expect(findGuide('Elevación de gemelos sentado')?.muscleIds?.primary).toEqual(['soleus'])
     expect(findGuide('Elevación de gemelos en prensa')?.muscleIds?.primary).toEqual(['gastroc', 'gastrocM'])
+  })
+})
+
+describe('tronco y abducción de cadera (máquinas de Forus)', () => {
+  it('extensión lumbar: el tronco se endereza en la concéntrica y queda dentro de −15…60°', () => {
+    const g = findGuide('Extensión lumbar en máquina')!
+    expect(g.diagram.limb).toBe('tronco')
+    expect(g.diagram.loadPhase).toBe('ida')
+    const t = g.diagram.trunk!
+    for (const v of [t.from, t.to]) expect(v >= -15 && v <= 60, `tronco ${v}°`).toBe(true)
+    expect(t.from, 'la salida está más inclinada que la final').toBeGreaterThan(t.to)
+  })
+
+  it('abducción de cadera: de pie, vista frontal, separación 0…45°', () => {
+    const g = findGuide('Abducción de cadera de pie en máquina')!
+    expect(g.diagram.pose).toBe('de-pie')
+    expect(g.diagram.limb).toBe('pierna')
+    expect(g.diagram.view).toBe('frontal')
+    const h = g.diagram.hipAbduction!
+    for (const v of [h.from, h.to]) expect(v >= 0 && v <= 45, `abducción ${v}°`).toBe(true)
+    expect(h.to, 'la concéntrica separa la pierna').toBeGreaterThan(h.from)
+  })
+
+  it('solo esas fichas llevan trunk o hipAbduction, y limb tronco implica trunk', () => {
+    for (const x of GUIDES) {
+      const d = x.diagram
+      expect(d.trunk !== undefined, `${x.key}: trunk`).toBe(d.limb === 'tronco')
+      expect(d.hipAbduction !== undefined, `${x.key}: hipAbduction`).toBe(x.key === 'Abducción de cadera de pie en máquina')
+    }
+  })
+
+  it('los músculos de las máquinas nuevas son los esperados', () => {
+    expect(findGuide('Extensión lumbar en máquina')?.muscleIds?.primary).toEqual(['erector'])
+    expect(findGuide('Remo alto en máquina')?.muscleIds?.primary).toEqual(['trapM', 'rhomb', 'dpost'])
+    expect(findGuide('Abducción de cadera de pie en máquina')?.muscleIds?.primary).toEqual(['gmed', 'tfl'])
+    expect(findGuide('Jalón en máquina con palancas')?.diagram.implement).toBe('maquina')
   })
 })

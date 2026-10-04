@@ -917,10 +917,115 @@ const BASE: ExerciseGuide[] = [
     ],
     diagram: d('de-pie', 0, 'polea', 'flexion', [0.5, 0.8], [0.55, 0.45], 'Flexiona el tronco hacia el suelo'),
   }),
+
+  // ───────────── Máquinas del gimnasio Forus ─────────────
+  g('Extensión lumbar en máquina', 'core', 2, ['espalda'], ['gluteo', 'isquios'], {
+    setup: [
+      'Desbloquea la palanca de ROM y fija un arco cómodo antes de sentarte.',
+      'Siéntate con los pies en el apoyapiés y regula el rodillo de las piernas.',
+      'Apoya la espalda bajo los omóplatos y cruza las manos sobre el pecho.',
+    ],
+    execution: [
+      'Parte con el tronco inclinado hacia delante.',
+      'Extiende el tronco empujando el respaldo, con la cadera como eje.',
+      'Detente al llegar a la vertical, sin pasarte.',
+      'Vuelve despacio hasta la posición de salida.',
+    ],
+    breathing: 'Espira al extender e inspira al volver.',
+    tips: [
+      'Hazlo lento y sin tirones: la zona lumbar es delicada.',
+      'Usa la palanca de ROM para no pasar del arco que controlas.',
+    ],
+    mistakes: [
+      'Hiperextender la zona lumbar al final.',
+      'Tirar del cuello o empujar con los brazos.',
+      'Rebotar abajo.',
+      'Usar más peso del que controlas.',
+    ],
+    diagram: d('sentado', 0, 'maquina', 'extension', [0.472, 0.5], [0.483, 0.512], 'Extiende el tronco con la cadera como eje'),
+  }),
+
+  g('Remo alto en máquina', 'tiron', 1, ['espalda'], ['hombro', 'biceps'], {
+    setup: [
+      'Siéntate de cara a las asas y sube el asiento hasta que queden a la altura de los hombros.',
+      'Regula el apoyo del tórax para que los brazos queden extendidos con el peso ligeramente suspendido.',
+      'Agarra las asas de forma simétrica y apoya los pies en el suelo con las piernas abiertas.',
+    ],
+    execution: [
+      'Flexiona los dos brazos a la vez llevando los codos atrás.',
+      'Mantén hombros, codos y muñecas en el mismo plano.',
+      'Junta las escápulas y aprieta un segundo.',
+      'Vuelve despacio sin apoyar el bloque de pesas.',
+    ],
+    breathing: 'Espira al tirar e inspira al volver.',
+    tips: [
+      'Un agarre más abierto o más convergente cambia la trayectoria.',
+      'Mantén la espalda quieta contra el apoyo.',
+    ],
+    mistakes: [
+      'Encoger los hombros.',
+      'Despegar el pecho del apoyo.',
+      'Tirar con los bíceps en lugar de con la espalda.',
+      'Soltar el peso al volver.',
+    ],
+    diagram: d('sentado', 5, 'maquina', 'tiron', [0.624, 0.542], [0.446, 0.53], 'Tira de las asas hacia atrás a la altura de los hombros'),
+  }),
+
+  g('Abducción de cadera de pie en máquina', 'aislamiento', 2, ['gluteo'], [], {
+    setup: [
+      'Elige la función de abducción de la máquina.',
+      'Ajusta el cojín sobre la cara externa del muslo, cerca de la rodilla.',
+      'Apoya la otra pierna con el pie plano y agárrate a las asas.',
+    ],
+    execution: [
+      'Mantén el tronco erguido.',
+      'Separa la pierna hacia el lateral sin inclinarte.',
+      'Pausa un segundo arriba apretando el glúteo.',
+      'Vuelve despacio hasta casi tocar la otra pierna.',
+    ],
+    breathing: 'Espira al separar e inspira al volver.',
+    tips: [
+      'Punta del pie hacia delante.',
+      'Recorrido corto y controlado: el equilibrio se gana con el tiempo.',
+    ],
+    mistakes: [
+      'Inclinar el tronco hacia el lado contrario.',
+      'Balancear para coger impulso.',
+      'Girar la cadera hacia fuera.',
+      'Hacerlo con prisa.',
+    ],
+    diagram: d('de-pie', 0, 'maquina', 'apertura', [0.467, 0.047], [0.5, 0.053], 'Separa la pierna hacia el lateral'),
+  }),
+
+  g('Jalón en máquina con palancas', 'tiron', 1, ['espalda'], ['biceps'], {
+    setup: [
+      'Regula el asiento para que las asas queden a unos 5 cm de tu mano con el brazo extendido.',
+      'Bloquea las piernas bajo los rodillos y apoya el tórax en el respaldo.',
+      'Agarra las asas con las manos simétricas y los brazos extendidos.',
+    ],
+    execution: [
+      'Tira de las asas hacia abajo llevando los codos a los costados.',
+      'Mantén codos y muñecas alineados.',
+      'Aprieta la espalda un segundo abajo.',
+      'Sube despacio hasta estirar los brazos.',
+    ],
+    breathing: 'Espira al tirar e inspira al subir.',
+    tips: [
+      'Un agarre más o menos convergente cambia la trayectoria.',
+      'Piensa en llevar los codos al suelo.',
+    ],
+    mistakes: [
+      'Tirar con los brazos en lugar de con la espalda.',
+      'Balancear el tronco hacia atrás.',
+      'Encoger los hombros.',
+      'Soltar las asas de golpe arriba.',
+    ],
+    diagram: d('sentado', 10, 'maquina', 'tiron', [0.453, 0.783], [0.463, 0.516], 'Tira de las asas hacia los hombros'),
+  }),
 ]
 
 type Step3 = [string, string, string]
-interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna'; elbow?: 'abajo' | 'arriba'; view?: 'lateral' | 'frontal' }
+interface Motion { steps: Step3; via?: Point; from?: Point; to?: Point; limb?: 'brazo' | 'pierna' | 'tronco'; elbow?: 'abajo' | 'arriba'; view?: 'lateral' | 'frontal'; trunk?: { from: number; to: number }; hipAbduction?: { from: number; to: number } }
 
 const CURL: Step3 = ['Brazos estirados', 'Flexiona los codos', 'Bíceps contraído']
 const ROW: Step3 = ['Brazos estirados', 'Tira de los codos', 'Escápulas juntas']
@@ -982,12 +1087,16 @@ const MOTION: Record<string, Motion> = {
 
   'Crunch en máquina': { steps: CRUNCH, from: [0.484, 0.54], to: [0.527, 0.376] },
   'Crunch en polea': { steps: CRUNCH, from: [0.53, 0.863], to: [0.592, 0.654] },
+  'Extensión lumbar en máquina': { steps: ['Tronco inclinado', 'Extiende el tronco', 'Tronco erguido'], limb: 'tronco', trunk: { from: 45, to: -10 } },
+  'Remo alto en máquina': { steps: ROW },
+  'Abducción de cadera de pie en máquina': { steps: ['Piernas juntas', 'Separa la pierna', 'Pierna abierta'], limb: 'pierna', view: 'frontal', hipAbduction: { from: 0, to: 35 } },
+  'Jalón en máquina con palancas': { steps: ['Brazos estirados', 'Baja los codos', 'Asas en los hombros'], via: [0.458, 0.649] },
 }
 
 const MERGED: ExerciseGuide[] = BASE.map((x) => {
   const m = MOTION[x.key]
   if (!m) return x
-  const { steps, via, from, to, limb, elbow, view } = m
+  const { steps, via, from, to, limb, elbow, view, trunk, hipAbduction } = m
   return {
     ...x,
     steps,
@@ -999,6 +1108,8 @@ const MERGED: ExerciseGuide[] = BASE.map((x) => {
       ...(limb && { limb }),
       ...(elbow && { elbow }),
       ...(view && { view }),
+      ...(trunk && { trunk }),
+      ...(hipAbduction && { hipAbduction }),
     },
   }
 })
@@ -1085,6 +1196,10 @@ const MUSCLES: Record<string, { primary: MuscleId[]; secondary: MuscleId[] }> = 
 
   'Crunch en máquina': { primary: ['rectus'], secondary: ['oblique', 'serr'] },
   'Crunch en polea': { primary: ['rectus'], secondary: ['oblique', 'serr'] },
+  'Extensión lumbar en máquina': { primary: ['erector'], secondary: ['glute', 'ham', 'hamS'] },
+  'Remo alto en máquina': { primary: ['trapM', 'rhomb', 'dpost'], secondary: ['infra', 'teres', 'lat', 'biceps'] },
+  'Abducción de cadera de pie en máquina': { primary: ['gmed', 'tfl'], secondary: ['glute'] },
+  'Jalón en máquina con palancas': { primary: ['lat', 'teres'], secondary: BACK_PULL_SEC },
 }
 
 export const GUIDES: ExerciseGuide[] = MERGED.map((x) => {

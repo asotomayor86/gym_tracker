@@ -54,6 +54,11 @@ export const SEED: Seed[] = [
   // Core
   ['Crunch en máquina', 'core', [], 'Máquina'],
   ['Crunch en polea', 'core', [], 'Polea'],
+  // Máquinas del gimnasio Forus no contempladas al principio
+  ['Extensión lumbar en máquina', 'espalda', ['gluteo', 'isquios'], 'Máquina'],
+  ['Remo alto en máquina', 'espalda', ['hombro', 'biceps'], 'Máquina'],
+  ['Abducción de cadera de pie en máquina', 'gluteo', [], 'Máquina'],
+  ['Jalón en máquina con palancas', 'espalda', ['biceps'], 'Máquina'],
 ]
 
 // [ejercicio, series, repeticiones, descanso en s]. Series de 12-15 reps y descansos cortos
