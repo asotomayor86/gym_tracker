@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { SyncBanner } from '../components/SyncUI'
+import { bodyWeightReady } from '../components/weight/weightData'
+import { WeightCard } from './BodyWeightPage'
 import { Button, EmptyState, HeatBar, Page, SectionTitle } from '../components/ui'
 import { alive, db } from '../db/db'
 import { MUSCLE_LABELS, fmtDate } from '../lib/labels'
@@ -57,6 +59,8 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+
+      {bodyWeightReady() && <WeightCard />}
 
       {neglected.length > 0 && (
         <section>

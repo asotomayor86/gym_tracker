@@ -2,8 +2,10 @@ import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { ForcedPasswordChange } from './components/auth/AccountSection'
 import { mockAuthActive, useAuth } from './components/auth/authShim'
+import { bodyWeightReady } from './components/weight/weightData'
 import { LoginSheetHost, NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
+import BodyWeightPage from './pages/BodyWeightPage'
 import HomePage from './pages/HomePage'
 import InvitePage from './pages/InvitePage'
 import LoginPage from './pages/LoginPage'
@@ -92,6 +94,7 @@ function MainApp() {
           <Route path="/templates/:id" element={<TemplateEditPage />} />
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          {bodyWeightReady() && <Route path="/peso" element={<BodyWeightPage />} />}
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
