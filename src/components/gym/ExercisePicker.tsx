@@ -4,7 +4,7 @@ import { filterExercises } from '../../lib/exerciseFilter'
 import { availabilityIndex, useExerciseGyms } from '../../lib/gyms'
 import { MUSCLE_LABELS } from '../../lib/labels'
 import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../../lib/types'
-import { Button, inputCls } from '../ui'
+import { Button, NameEn, inputCls } from '../ui'
 import { LastAttemptButton } from '../LastAttempt'
 import { AvailabilityChip } from './GymUI'
 import { useGymContext } from './useGymContext'
@@ -71,7 +71,7 @@ function PickerSheet({ exercises, onPick, excludeSessionId, onClose }: { exercis
           <Button onClick={onClose} className="!min-h-10 px-4">{added.length ? `Hecho (${added.length})` : 'Cerrar'}</Button>
         </div>
         <div className="mx-auto w-full max-w-3xl space-y-3">
-          <input className={`${inputCls} text-base`} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, equipo o músculo…" aria-label="Buscar ejercicio" />
+          <input className={`${inputCls} text-base`} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar (español o English)" aria-label="Buscar ejercicio" />
           <label className={`flex min-h-11 items-center gap-3 rounded-xl border border-hair px-3 ${gym ? '' : 'opacity-60'}`}>
             <input type="checkbox" disabled={!gym} checked={onlyGym} onChange={(e) => update({ onlyGym: e.target.checked })} className="size-5 accent-[var(--signal)]" />
             <span className="text-sm font-semibold">{gym ? `Solo en mi gimnasio (${gym.name})` : 'Solo en mi gimnasio'}</span>
@@ -103,6 +103,7 @@ function PickerSheet({ exercises, onPick, excludeSessionId, onClose }: { exercis
                 <button type="button" onClick={() => { onPick(e.id); setAdded((a) => [...a, e.id]) }} className="press flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left">
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold leading-snug">{e.name}</span>
+                    <NameEn className="text-xs">{e.nameEn}</NameEn>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-mute">
                       {MUSCLE_LABELS[e.primaryMuscle]}
                       {gym && status !== 'available' && <AvailabilityChip status={status} gymName={gym.name} />}
@@ -111,7 +112,7 @@ function PickerSheet({ exercises, onPick, excludeSessionId, onClose }: { exercis
                   {n > 0 && <span className="num shrink-0 text-xs text-signal-text">✓ añadido{n > 1 ? ` ×${n}` : ''}</span>}
                   <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full border border-hair text-lg text-signal-text">+</span>
                 </button>
-                <LastAttemptButton iconOnly exerciseId={e.id} exerciseName={e.name} excludeSessionId={excludeSessionId} />
+                <LastAttemptButton iconOnly exerciseId={e.id} exerciseName={e.name} exerciseNameEn={e.nameEn} excludeSessionId={excludeSessionId} />
               </li>
             )
           })}

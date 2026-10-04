@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from './ui'
+import { Button, NameEn } from './ui'
 import { alive, db } from '../db/db'
 import { exerciseAttempts, type AttemptSuggestion, type EffortSummary } from '../lib/attempts'
 import { usePrefs } from '../lib/prefs'
@@ -36,8 +36,8 @@ export interface ApplyValues { weightKg: number; reps: number }
  * Botón «Último intento»: abre una ventana con la última vez que se hizo el ejercicio (series, esfuerzo), la sugerencia
  * y el historial corto. `onApply` (opcional) aplica la sugerencia y devuelve cuántas series/filas actualizó.
  */
-export function LastAttemptButton({ exerciseId, exerciseName, excludeSessionId, onApply, iconOnly, className = '' }: {
-  exerciseId: string; exerciseName: string; excludeSessionId?: string; onApply?: (v: ApplyValues) => Promise<number | void> | number | void; iconOnly?: boolean; className?: string
+export function LastAttemptButton({ exerciseId, exerciseName, exerciseNameEn, excludeSessionId, onApply, iconOnly, className = '' }: {
+  exerciseId: string; exerciseName: string; exerciseNameEn?: string; excludeSessionId?: string; onApply?: (v: ApplyValues) => Promise<number | void> | number | void; iconOnly?: boolean; className?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -48,13 +48,13 @@ export function LastAttemptButton({ exerciseId, exerciseName, excludeSessionId, 
       >
         <IconHistory />{!iconOnly && 'Último intento'}
       </button>
-      {open && <AttemptSheet exerciseId={exerciseId} exerciseName={exerciseName} excludeSessionId={excludeSessionId} onApply={onApply} onClose={() => setOpen(false)} />}
+      {open && <AttemptSheet exerciseId={exerciseId} exerciseName={exerciseName} exerciseNameEn={exerciseNameEn} excludeSessionId={excludeSessionId} onApply={onApply} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function AttemptSheet({ exerciseId, exerciseName, excludeSessionId, onApply, onClose }: {
-  exerciseId: string; exerciseName: string; excludeSessionId?: string; onApply?: (v: ApplyValues) => Promise<number | void> | number | void; onClose: () => void
+function AttemptSheet({ exerciseId, exerciseName, exerciseNameEn, excludeSessionId, onApply, onClose }: {
+  exerciseId: string; exerciseName: string; exerciseNameEn?: string; excludeSessionId?: string; onApply?: (v: ApplyValues) => Promise<number | void> | number | void; onClose: () => void
 }) {
   const { unit, incrementKg } = usePrefs()
   const id = useId()
@@ -90,6 +90,7 @@ function AttemptSheet({ exerciseId, exerciseName, excludeSessionId, onApply, onC
           <div className="min-w-0 flex-1">
             <div className="eyebrow">Último intento</div>
             <h2 id={`${id}-t`} className="display text-lg leading-snug">{exerciseName}</h2>
+            <NameEn className="text-sm">{exerciseNameEn}</NameEn>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="press grid size-10 shrink-0 place-items-center rounded-full border border-hair text-mute hover:text-ink">✕</button>
         </div>

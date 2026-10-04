@@ -6,7 +6,7 @@ import {
   type AdminUser, type Invitation, type Role,
 } from '../components/admin/adminShim'
 import { useAuth } from '../components/auth/authShim'
-import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
+import { Button, CommitInput, NameEn, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db } from '../db/db'
 import { availabilityIndex, removeGym, saveGym, setAvailability, useExerciseGyms, useGyms } from '../lib/gyms'
 import { MUSCLE_LABELS } from '../lib/labels'
@@ -264,7 +264,7 @@ function Availability() {
             <ul className="glass-flat divide-y divide-hair overflow-hidden">
               {list.map((e) => (
                 <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="min-w-0 flex-1 text-sm font-semibold">{e.name}</span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold">{e.name}<NameEn className="text-xs">{e.nameEn}</NameEn></span>
                   <span className="flex shrink-0 gap-1" role="group" aria-label={`Disponibilidad de ${e.name}`}>
                     {MARKS.map((k) => {
                       const on = state(e.id) === k.v

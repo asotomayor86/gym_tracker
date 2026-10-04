@@ -9,7 +9,7 @@ import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
 import { RestTimer, type Rest } from '../components/RestTimer'
 import { DragHandle, MoveButtons, SortableItem, SortableList } from '../components/Sortable'
-import { Button, CommitInput, Page, inputCls } from '../components/ui'
+import { Button, CommitInput, NameEn, Page, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { unlockAudio } from '../lib/restAudio'
 import { addSetToSession, reorderSessionExercises, sessionExerciseIds } from '../lib/order'
@@ -51,6 +51,7 @@ export default function SessionPage() {
   if (!session || !logs || !allLogs || !exercises || !items) return <Page title="Sesión"><p>No encontrada.</p></Page>
 
   const exById = new Map(exercises.map((e) => [e.id, e]))
+  const exEn = (eid: string) => exercises.find((e) => e.id === eid)?.nameEn
   const exName = (eid: string) => exercises.find((e) => e.id === eid)?.name ?? 'Ejercicio'
   // orden de alta (exerciseOrder); mientras se guarda un arrastre se muestra el orden nuevo sin parpadeo
   const stored = sessionExerciseIds(logs)
@@ -136,10 +137,11 @@ export default function SessionPage() {
               <span className="num text-xs text-signal-text">{String(gi + 1).padStart(2, '0')}</span>
               <div className="min-w-0 flex-1">
                 <h2 className="display text-xl leading-snug">{exName(eid)}</h2>
+                <NameEn className="mt-0.5 text-sm">{exEn(eid)}</NameEn>
                 {gym && avail(eid) !== 'available' && <div className="mt-1"><AvailabilityChip status={avail(eid)} gymName={gym.name} /></div>}
               </div>
               {!finished && groups.length > 1 && <MoveButtons label={exName(eid)} first={gi === 0} last={gi === groups.length - 1} onMove={(dir) => move(eid, dir)} />}
-              {!finished && <LastAttemptButton exerciseId={eid} exerciseName={exName(eid)} excludeSessionId={session.id} onApply={(v) => applySuggestion(eid, v)} />}
+              {!finished && <LastAttemptButton exerciseId={eid} exerciseName={exName(eid)} exerciseNameEn={exEn(eid)} excludeSessionId={session.id} onApply={(v) => applySuggestion(eid, v)} />}
               {exById.get(eid) && <GuideToggle exercise={exById.get(eid)!} />}
             </div>
             {sug && (

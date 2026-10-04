@@ -4,7 +4,8 @@ import { useAuth } from '../components/auth/authShim'
 import { GuideToggle } from '../components/ExerciseGuideView'
 import { AvailabilityChip } from '../components/gym/GymUI'
 import { useGymContext } from '../components/gym/useGymContext'
-import { Button, CommitInput, EmptyState, MuscleSelect, Page, SectionTitle, inputCls } from '../components/ui'
+import { filterExercises } from '../lib/exerciseFilter'
+import { Button, CommitInput, EmptyState, NameEn, MuscleSelect, Page, SectionTitle, inputCls } from '../components/ui'
 import { alive, db, remove, save } from '../db/db'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../lib/types'
@@ -17,19 +18,18 @@ export default function ExercisesPage() {
   const { gym, avail } = useGymContext()
 
   if (!exercises) return null
-  const q = query.trim().toLowerCase()
-  const shown = exercises.filter((e) => e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name))
+  const shown = filterExercises(exercises, { query, sort: 'name' }).map((r) => r.exercise)
 
   const add = async () => {
     const e = await save('exercises', {
-      name: 'Nuevo ejercicio', primaryMuscle: 'pecho', secondaryMuscles: [], equipment: '', notes: '',
+      name: 'Nuevo ejercicio', primaryMuscle: 'pecho', secondaryMuscles: [], equipment: '', notes: '', nameEn: '',
     })
     setEditing(e.id)
   }
 
   return (
     <Page title="Ejercicios" eyebrow={`${exercises.length} en catálogo`} actions={isAdmin ? <Button onClick={add}>+ Nuevo</Button> : undefined}>
-      <input className={`${inputCls} text-base`} type="search" placeholder="Buscar ejercicio…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className={`${inputCls} text-base`} type="search" placeholder="Buscar (español o English)" value={query} onChange={(e) => setQuery(e.target.value)} />
       {exercises.length === 0 && <EmptyState>{isAdmin ? 'Aún no hay ejercicios: crea el primero con «+ Nuevo».' : 'Aún no hay ejercicios en el catálogo.'}</EmptyState>}
       {MUSCLE_GROUPS.map((m) => {
         const list = shown.filter((e) => e.primaryMuscle === m)
@@ -45,9 +45,10 @@ export default function ExercisesPage() {
                   <div key={e.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 transition-colors hover:bg-ink/5">
                     <button onClick={() => isAdmin && setEditing(e.id)} disabled={!isAdmin} className="min-w-0 flex-1 py-1 text-left disabled:cursor-default">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-semibold">{e.name}</span>
+                        <span className="min-w-0 font-semibold">{e.name}</span>
                         {gym && <AvailabilityChip status={avail(e.id)} gymName={gym.name} showOk />}
                       </div>
+                      <NameEn className="text-xs">{e.nameEn}</NameEn>
                       <div className="text-xs text-mute">
                         {[e.equipment, ...e.secondaryMuscles.map((s) => MUSCLE_LABELS[s])].filter(Boolean).join(' · ')}
                       </div>
@@ -76,6 +77,10 @@ function ExerciseForm({ exercise: e, onClose }: { exercise: Exercise; onClose: (
   return (
     <div className="space-y-3 bg-ink/5 p-4">
       <CommitInput value={e.name} onCommit={(v) => update({ name: v.trim() || e.name })} placeholder="Nombre" />
+      <label className="eyebrow block">
+        Nombre en inglés
+        <CommitInput value={e.nameEn ?? ''} maxLength={120} onCommit={(v) => update({ nameEn: v.trim().slice(0, 120) })} placeholder="Opcional (p. ej. Leg press)" />
+      </label>
       <div className="grid grid-cols-2 gap-2">
         <label className="eyebrow">
           Grupo principal

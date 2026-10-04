@@ -111,3 +111,10 @@ export function MuscleSelect({
     </select>
   )
 }
+
+/** Nombre del ejercicio en inglés: línea secundaria bajo el nombre (más pequeña, atenuada, truncada). No pinta nada si está vacío. */
+export function NameEn({ children, className = '' }: { children?: string | null; className?: string }) {
+  const t = children?.trim()
+  if (!t) return null
+  return <span lang="en" className={`block truncate text-[0.7em] font-normal italic leading-tight text-mute ${className}`}>{t}</span>
+}
