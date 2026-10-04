@@ -1,7 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { SyncBanner } from '../components/SyncUI'
 import { bodyWeightReady } from '../components/weight/weightData'
 import { WeightCard } from './BodyWeightPage'
 import { Button, EmptyState, HeatBar, Page, SectionTitle } from '../components/ui'
@@ -29,7 +28,6 @@ export default function HomePage() {
 
   return (
     <Page title="Hoy" eyebrow={fmtDate(today)}>
-      <SyncBanner />
       {active && (
         <Link
           to={`/session/${active.id}`}

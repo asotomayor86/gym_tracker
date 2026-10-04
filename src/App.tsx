@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { ForcedPasswordChange } from './components/auth/AccountSection'
-import { mockAuthActive, useAuth } from './components/auth/authShim'
+import { useAuth } from './components/auth/authShim'
 import { bodyWeightReady } from './components/weight/weightData'
-import { LoginSheetHost, NavDot, SyncBadge } from './components/SyncUI'
+import { NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
 import BodyWeightPage from './pages/BodyWeightPage'
 import HomePage from './pages/HomePage'
@@ -34,22 +34,24 @@ function Bare({ children }: { children: ReactNode }) {
 }
 
 /** La app solo funciona con cuenta: sin sesión → acceso (o registro por invitación); con reinicio de contraseña → cambio obligatorio. */
+/** Solo en desarrollo: ?devauth salta el acceso para revisar pantallas sin servidor de cuentas. */
+const devBypass = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('devauth')
+
 export default function App() {
   const auth = useAuth()
-  if (mockAuthActive()) {
-    if (auth.status === 'loading') return <Bare><main className="grid min-h-dvh place-items-center text-sm text-mute" aria-busy="true">Cargando…</main></Bare>
-    if (auth.status !== 'authenticated') {
-      return (
-        <Bare>
-          <Routes>
-            <Route path="/invitacion/:codigo" element={<InvitePage />} />
-            <Route path="*" element={<LoginPage />} />
-          </Routes>
-        </Bare>
-      )
-    }
-    if (auth.mustChangePassword) return <Bare><ForcedPasswordChange /></Bare>
+  if (devBypass) return <MainApp />
+  if (auth.status === 'loading') return <Bare><main className="grid min-h-dvh place-items-center text-sm text-mute" aria-busy="true">Cargando…</main></Bare>
+  if (auth.status !== 'authenticated') {
+    return (
+      <Bare>
+        <Routes>
+          <Route path="/invitacion/:codigo" element={<InvitePage />} />
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </Bare>
+    )
   }
+  if (auth.mustChangePassword) return <Bare><ForcedPasswordChange /></Bare>
   return <MainApp />
 }
 
@@ -64,7 +66,6 @@ function MainApp() {
     <div className="min-h-dvh md:flex">
       <div className="live-bg" aria-hidden><i /><i /><i /><i /></div>
       <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-30 md:hidden"><SyncBadge /></div>
-      <LoginSheetHost />
       <nav
         className="glass-flat fixed bottom-3 inset-x-3 z-20 flex gap-1 p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]
                    md:sticky md:top-4 md:bottom-auto md:inset-x-auto md:m-4 md:h-[calc(100dvh-2rem)] md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:p-3"

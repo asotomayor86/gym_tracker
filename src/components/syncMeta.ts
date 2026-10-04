@@ -1,13 +1,4 @@
-import { useSyncExternalStore } from 'react'
 import { pendingText, type SyncKind } from '../lib/syncView'
-
-/* ---------- Hoja de acceso (estado global para abrirla desde cualquier sitio) ---------- */
-let sheetOpen = false
-const sheetSubs = new Set<() => void>()
-export const setSheet = (v: boolean) => { sheetOpen = v; sheetSubs.forEach((l) => l()) }
-export const openLogin = () => setSheet(true)
-export const useSheetOpen = () =>
-  useSyncExternalStore((cb) => { sheetSubs.add(cb); return () => sheetSubs.delete(cb) }, () => sheetOpen)
 
 /* ---------- Iconos ---------- */
 export const ICON: Record<SyncKind, string> = {

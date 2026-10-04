@@ -1,26 +1,16 @@
 import AccountSection from '../components/auth/AccountSection'
-import { mockAuthActive } from '../components/auth/authShim'
 import { Button, CommitInput, Page, SectionTitle, inputCls } from '../components/ui'
-import { KindIcon, LoginForm, StatusFacts, SyncBanner } from '../components/SyncUI'
+import { KindIcon, StatusFacts } from '../components/SyncUI'
 import { kindDesc, kindLabel, kindTone } from '../components/syncMeta'
 import { db } from '../db/db'
 import { setPrefs, usePrefs } from '../lib/prefs'
-import { logout, syncNow } from '../lib/sync'
+import { syncNow } from '../lib/sync'
 import { useAgo, useSyncView } from '../lib/syncView'
 import { SYNC_TABLES } from '../lib/syncTables'
 
 function SyncSection() {
   const v = useSyncView()
   const ago = useAgo(v.lastSync)
-  if (!v.loggedIn && mockAuthActive()) return <p className="text-sm text-mute">La sincronización se activa al iniciar sesión con tu cuenta.</p>
-  if (!v.loggedIn) {
-    return (
-      <>
-        <p className="text-sm text-mute">Los datos funcionan sin conexión. Inicia sesión una vez y se sincronizarán solos en segundo plano.</p>
-        <LoginForm />
-      </>
-    )
-  }
   return (
     <>
       <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${kindTone[v.kind]}`}>
@@ -38,10 +28,8 @@ function SyncSection() {
       ]} />
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => syncNow()} disabled={v.kind === 'syncing' || !v.online}>Sincronizar ahora</Button>
-        <Button variant="ghost" onClick={logout}>Cerrar sesión</Button>
       </div>
-      <p className="text-xs text-mute">Cerrar sesión no borra nada: tus datos siguen en este dispositivo.</p>
-    </>
+          </>
   )
 }
 
@@ -56,15 +44,10 @@ export default function SettingsPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
-  const focusLogin = () => {
-    const el = document.getElementById('sync-password')
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    el?.focus()
-  }
 
   return (
     <Page title="Ajustes" eyebrow="Preferencias y datos">
-      {mockAuthActive() ? <AccountSection /> : <SyncBanner onLogin={focusLogin} />}
+      <AccountSection />
 
       <section className="glass space-y-4 p-5">
         <SectionTitle>Sincronización</SectionTitle>
