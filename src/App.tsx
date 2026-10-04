@@ -5,6 +5,8 @@ import { useAuth } from './components/auth/authShim'
 import { bodyWeightReady } from './components/weight/weightData'
 import { NavDot, SyncBadge } from './components/SyncUI'
 import ExercisesPage from './pages/ExercisesPage'
+import { adminReady } from './components/admin/adminShim'
+import AdminPage from './pages/AdminPage'
 import BodyWeightPage from './pages/BodyWeightPage'
 import HomePage from './pages/HomePage'
 import InvitePage from './pages/InvitePage'
@@ -46,6 +48,7 @@ export default function App() {
       <Bare>
         <Routes>
           <Route path="/invitacion/:codigo" element={<InvitePage />} />
+          {adminReady() && <Route path="/admin" element={<AdminPage />} />}
           <Route path="*" element={<LoginPage />} />
         </Routes>
       </Bare>
